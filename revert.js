@@ -264,6 +264,13 @@ function init() {
   $("rv-connect").onclick = () => (st.midi ? (fillPorts(), probe()) : connectMidi());
   $("rv-port").onchange = () => probe();
   $("rv-is-samples").onchange = () => render();
+  // Deep links from the Check tab: #revert-fixed / #revert-unfixed preselect the way back
+  const fromHash = () => {
+    const m = /^#revert-(fixed|unfixed)$/.exec(location.hash);
+    if (m) { st.mode = m[1]; render(); window.scrollTo(0, 0); }
+  };
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
   render();
 }
 

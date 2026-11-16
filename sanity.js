@@ -581,7 +581,8 @@ function check(raw, fileName) {
           } else {
             facts.keyfix = false;
             add(G5, "warn", "Installed OS will NOT verify updates with the Model:Samples key",
-              "The 32-byte key fix (0x401296b2) is missing. The OS boots, but the Model:Samples OS cannot come back over USB, and later USB updates need a Cycles-signed file. Go back through the STARTUP MENU over MIDI IN.");
+              "The 32-byte key fix (0x401296b2) is missing. The OS boots, but Modded-Cycles' \"Model:Samples: back to its OS\" will be refused, and later USB updates need a Cycles-signed file. To go back over USB, use the second way back (Model:Cycles → Samples OS); otherwise the STARTUP MENU over MIDI IN.");
+            checks[checks.length - 1].link = { href: "#revert-unfixed", text: "Back to Samples OS: installed another way, without the key fix" };
           }
         } else if (!smpKey) add(G5, "skip", "Update key not checked", "The Samples key is not available (see Signature).");
       }
@@ -743,7 +744,7 @@ function report(r) {
   let g = null;
   for (const c of r.checks) {
     if (c.group !== g) { g = c.group; L.push("", `[${g}]`); }
-    L.push(`  ${c.status.toUpperCase().padEnd(8)} ${c.title}${c.detail ? "\n           " + c.detail : ""}`);
+    L.push(`  ${c.status.toUpperCase().padEnd(8)} ${c.title}${c.detail ? "\n           " + c.detail : ""}${c.link ? "\n           → " + c.link.text : ""}`);
   }
   return L.join("\n");
 }

@@ -59,6 +59,7 @@ h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
   font-size: 12px; font-weight: 700; color: #fff; margin-top: 1px; }
 .chk .t { font-weight: 550; }
 .chk .d { grid-column: 2; color: var(--muted); font-size: 14px; }
+.chk .go { grid-column: 2; font-size: 14px; font-weight: 600; margin-top: 2px; }
 .s-pass .ic { background: var(--pass); } .s-info .ic { background: var(--accent); }
 .s-skip .ic { background: var(--muted); } .s-warn .ic { background: var(--warn); }
 .s-fail .ic { background: var(--fail); } .s-critical .ic { background: var(--crit); }
@@ -224,7 +225,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 <script>
 (function () {
   const show = () => {
-    const tab = location.hash === "#revert" ? "revert" : "check";
+    const tab = location.hash.startsWith("#revert") ? "revert" : "check";
     for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
     document.getElementById("tab-check").hidden = tab !== "check";
     document.getElementById("tab-revert").hidden = tab !== "revert";
@@ -302,6 +303,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       const row = el("div", "chk s-" + c.status);
       row.append(el("span", "ic", ICON[c.status]), el("span", "t", c.title));
       if (c.detail) row.append(el("span", "d", c.detail));
+      if (c.link) { const a = el("a", "go", c.link.text + " →"); a.href = c.link.href; row.append(a); }
       grp.append(row);
     }
 
