@@ -8,6 +8,12 @@ A static page with two tabs, for a Model:Samples running a custom (Model:Cycles-
 **Check a file.** Checks a `.syx` before you flash it: only the MAIN OS (section 3) may differ from Elektron's official
 Model:Samples OS 1.13 container, and nothing the recovery path (bootstrap / STARTUP MENU) depends on may be touched.
 Each report says where and when the file can be flashed and what the device can accept afterwards.
+Two warnings come with a corrected file to download, checked again before it is offered:
+- packet numbers past 16,383 in the old encoding: a re-wrapped `.syx` (same container, only the packet numbering);
+- a Model:Cycles OS without the 32-byte key fix (e.g. an elektron-firmware-tool cross-flash): the same file with the
+  key fix, as Modded-Cycles applies it (only those 32 bytes of the OS change, re-signed with the Samples key derived
+  from the file's own official bootstrap). For the stock Cycles OS this installs the same OS as Modded-Cycles'
+  reference build.
 
 **Back to Samples OS.** Brings a Model:Samples that runs a Model:Cycles OS back to its own OS over USB, the two ways
 18nelli18's [Modded-Cycles](https://github.com/18nelli18/Modded-Cycles) flasher offers:
@@ -34,7 +40,7 @@ Open `index.html` (or host the folder on GitHub Pages). Everything runs locally;
 
 ## Files
 
-- `sanity.js`: checking logic, with no DOM (browser `window.SamplesSanity`, Node `require`).
+- `sanity.js`: checking logic, with no DOM (browser `window.SamplesSanity`, Node `require`). `fixKey()` uses the vendored builder.
 - `revert.js`: the "Back to Samples OS" tab.
 - `vendor/modded-cycles/`: `builder.js` and `flasher.js` from Modded-Cycles at commit `259441967e39`, unchanged (MIT, licences alongside).
 - `index.html`: the UI.

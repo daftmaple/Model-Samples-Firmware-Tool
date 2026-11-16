@@ -135,3 +135,13 @@ test("the re-wrap button appears only for the packet-numbering warning", () => {
   const f = result({ verdict: "fail" }); f.facts.seqHigh = 8;
   assert.equal(buttons(f)[0], "Copy report");
 });
+
+test("the key-fix button appears only for a fixable missing key fix", () => {
+  const first = (r) => render(r).byClass("actions")[0].children[0].textContent;
+  const r = result(); r.facts.keyfix = false; r.facts.canFixKey = true;
+  assert.equal(first(r), "Download .syx with the key fix");
+  const n = result(); n.facts.keyfix = false; n.facts.canFixKey = false;
+  assert.equal(first(n), "Copy report");
+  const f = result({ verdict: "fail" }); f.facts.canFixKey = true;
+  assert.equal(first(f), "Copy report");
+});

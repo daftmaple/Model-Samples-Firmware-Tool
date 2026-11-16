@@ -423,6 +423,21 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       };
       act.prepend(fix);
     }
+    if (f.canFixKey && r.verdict === "warn") {
+      const fix = el("button", "primary", "Download .syx with the key fix");
+      fix.title = "Same container and OS; only the 32-byte key constant changes, re-signed with the Model:Samples key";
+      fix.onclick = () => {
+        try {
+          const out = S.fixKey(r.raw);
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([out], { type: "application/octet-stream" }));
+          a.download = (f.fileName || "firmware").replace(/\.syx$/i, "") + "_keyfix.syx";
+          a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+          fix.textContent = "Saved: check it again here";
+        } catch (e) { fix.textContent = "Key fix failed: " + e.message; fix.disabled = true; }
+      };
+      act.prepend(fix);
+    }
     box.append(act);
     return box;
   }

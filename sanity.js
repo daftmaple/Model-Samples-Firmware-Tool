@@ -580,8 +580,11 @@ function check(raw, fileName) {
               "The 32-byte key fix is present: the official Samples OS can come back over USB (Modded-Cycles \"back to its OS\"), and Model:Cycles firmwares are refused.");
           } else {
             facts.keyfix = false;
+            facts.canFixKey = nOk === regs.length;
             add(G5, "warn", "Installed OS will NOT verify updates with the Model:Samples key",
-              "The 32-byte key fix (0x401296b2) is missing. The OS boots, but Modded-Cycles' \"Model:Samples: back to its OS\" will be refused, and later USB updates need a Cycles-signed file. To go back over USB, use the second way back (Model:Cycles → Samples OS); otherwise the STARTUP MENU over MIDI IN.");
+              "The 32-byte key fix (0x401296b2) is missing. The OS boots, but Modded-Cycles' \"Model:Samples: back to its OS\" will be refused, and later USB updates need a Cycles-signed file."
+              + (facts.canFixKey ? " Not flashed yet: download the file with the key fix below instead (same OS, only those 32 bytes change, re-signed with the Samples key from this file's own bootstrap)." : "")
+              + " Already installed: to go back over USB, use the second way back (Model:Cycles → Samples OS); otherwise the STARTUP MENU over MIDI IN.");
             checks[checks.length - 1].link = { href: "#revert-unfixed", text: "Back to Samples OS: installed another way, without the key fix" };
           }
         } else if (!smpKey) add(G5, "skip", "Update key not checked", "The Samples key is not available (see Signature).");
@@ -714,6 +717,47 @@ function rewrap(raw) {
   return out;
 }
 
+/* Add the 32-byte key fix to a Model:Samples file whose Model:Cycles OS lacks it (an elektron-firmware-tool cross-flash,
+ * for example): the key constant at 0x401296b2 is recomputed so the installed OS verifies updates with the Samples key,
+ * as Modded-Cycles' cyclesForSamples / mods_for_samples.py do (notes/41 §4). Section 3 is re-packed with only those
+ * 32 bytes changed (Modded-Cycles' aplibRepack), the container re-signed with the Samples key taken from the file's own
+ * official bootstrap, and the transport (product, start sequence) kept, with 21-bit packet numbers. No Elektron
+ * bytes or key come from this page. The result is checked again and must be safe; throws otherwise. */
+function fixKey(raw) {
+  raw = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+  const B = builder();
+  const before = check(raw);
+  if (before.facts.keyfix !== false) throw new Error("this file has no missing key fix to add");
+  if (before.checks.some((c) => RANK[c.status] >= RANK.fail)) throw new Error("fix the errors in this file first");
+  if (!before.facts.canFixKey) throw new Error("the OS update-check code is modified");
+
+  const u = B.unwrap(raw), c = B.parseContainer(u.stream);
+  const stored = (id) => { const s = c.sections.find((x) => x.id === id); return c.blob.subarray(s.off, s.off + s.size); };
+  const body = c.blob.subarray(0, c.blob.length - 32), digest = c.blob.subarray(c.blob.length - 32);
+  const sKey = B.findKey([depack(stored(2), null).data], body, digest);
+  if (!sKey) throw new Error("Model:Samples key not found");
+
+  const { data: main, ops } = B.aplibDepack(stored(3));
+  const text = main.subarray(CYC_KEY_STR - MAIN_BASE, CYC_KEY_STR - MAIN_BASE + 11);
+  const h = sha256(text), hr = sha256(Uint8Array.from(text).reverse());
+  const co = CYC_KEY_CONST - MAIN_BASE;
+  const patched = Uint8Array.from(main), dirty = new Uint8Array(main.length);
+  for (let i = 0; i < 32; i++) { patched[co + i] = sKey[i] ^ h[i] ^ hr[i]; dirty[co + i] = 1; }
+  const s3 = B.aplibRepack(patched, ops, dirty);
+  if (!eq(depack(s3, null).data, patched)) throw new Error("re-packed MAIN OS reads back differently");
+
+  const out = rewrap(B.wrap(B.buildStream(B.rebuildContainer(c, { 3: s3 }, sKey), BYTES_PER_MSG), u.product, u.start_seq));
+  const after = check(out);
+  if (after.verdict !== "safe" || after.facts.keyfix !== true || after.facts.transport !== before.facts.transport)
+    throw new Error("the fixed file does not check as safe");
+  return out;
+}
+function builder() {
+  const B = (root && root.MCBuilder) || (typeof require === "function" ? require("./vendor/modded-cycles/builder.js") : null);
+  if (!B) throw new Error("Modded-Cycles builder not loaded");
+  return B;
+}
+
 function finish(result) {
   const worst = result.checks.reduce((m, c) => Math.max(m, RANK[c.status]), 0);
   result.verdict = ["safe", "warn", "fail", "critical"][worst];
@@ -749,7 +793,7 @@ function report(r) {
   return L.join("\n");
 }
 
-const API = { check, report, rewrap, sha256, hmacSha256, hex, REF };
+const API = { check, report, rewrap, fixKey, sha256, hmacSha256, hex, REF };
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 if (typeof window !== "undefined") window.SamplesSanity = API;
 })(this);

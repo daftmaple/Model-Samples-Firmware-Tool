@@ -198,3 +198,42 @@ test("a truncated official file is refused", (t) => {
   const r = S.check(raw.subarray(0, raw.length - 1000), "cut.syx");
   assert.equal(r.verdict, "fail");
 });
+
+// ---- Adding the missing key fix ----------------------------------------------------------------------------------
+const EFT = "model-samples_OS1.13-cycles-via-elektron-firmware-tool.syx";
+
+test("fixKey(): the cross-flash gets the key fix, checks safe, same OS as Modded-Cycles' reference build", (t) => {
+  const files = need(t, EFT, CYC, SMP); if (!files) return;
+  const [eft, cyc, smp] = files;
+  assert.equal(S.check(eft, EFT).facts.canFixKey, true);
+  const out = S.fixKey(eft);
+  const r = S.check(out, "fixed.syx");
+  assert.equal(r.verdict, "safe", notOk(r).join("; "));
+  assert.equal(r.facts.keyfix, true);
+  assert.equal(r.facts.transport, "samples", "transport kept");
+  assert.equal(out.length, eft.length);
+  const ref = S.check(B.cyclesForSamples(cyc, smp).raw, "ref.syx");
+  assert.equal(r.facts.mainSha, ref.facts.mainSha, "installed OS = Modded-Cycles' stock Cycles OS for Model:Samples");
+  assert.equal(route(r, STARTUP).ok, "yes");
+  assert.equal(find(S.check(eft, EFT), /will NOT verify/).detail.includes("download the file with the key fix"), true);
+});
+
+test("fixKey(): only the 32 key bytes of the MAIN OS change, and sections 2, 4 and 5 stay byte-identical", (t) => {
+  const eft = need(t, EFT); if (!eft) return;
+  const a = B.parseContainer(B.unwrap(eft).stream), b = B.parseContainer(B.unwrap(S.fixKey(eft)).stream);
+  const stored = (c, id) => { const s = c.sections.find((x) => x.id === id); return c.blob.subarray(s.off, s.off + s.size); };
+  for (const id of [2, 4, 5]) assert.deepEqual(stored(b, id), stored(a, id), `section ${id}`);
+  const m0 = B.aplibDepack(stored(a, 3)).data, m1 = B.aplibDepack(stored(b, 3)).data;
+  assert.equal(m1.length, m0.length);
+  const diff = [];
+  for (let i = 0; i < m0.length; i++) if (m0[i] !== m1[i]) diff.push(i);
+  assert.ok(diff.length > 0 && diff.every((i) => i >= 0x401296b2 - 0x40000400 && i < 0x401296b2 - 0x40000400 + 32), "diff inside 0x401296b2..+32");
+});
+
+test("fixKey(): refuses files that do not need it or cannot take it", (t) => {
+  const files = need(t, SMP, "modded-cycles-os_2.0_for-samples_smp-os.syx", EFT); if (!files) return;
+  assert.throws(() => S.fixKey(files[0]), /no missing key fix/);
+  assert.throws(() => S.fixKey(files[1]), /no missing key fix/);
+  const badSig = tamper(files[2], (b) => { b[b.length - 1] ^= 1; });
+  assert.throws(() => S.fixKey(badSig), /no missing key fix|fix the errors/);
+});
