@@ -59,3 +59,15 @@ HMAC key is derived from the candidate's own bootstrap after that bootstrap matc
 
 Based on Modded-Cycles (`tools/mtlib`, `tools/crossflash.py`, `tools/mods_for_samples.py`, notes 02/41/57) and
 Supermodel notes/41 §9 (in-place unpacking rule).
+
+## Credits
+
+The "Back to Samples OS" ways back are [18nelli18](https://github.com/18nelli18)'s finding, from
+[Modded-Cycles](https://github.com/18nelli18/Modded-Cycles) (notes/41). They found that the Model:Samples bootstrap
+starts the Samples OS from a Model:Cycles container, and that recomputing a 32-byte key constant lets a Cycles OS accept
+the official Samples OS over USB. They also made the reference builds this page checks against. The key-fix download
+applies the same finding.
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). The files in `vendor/modded-cycles/` keep their own MIT licences, alongside them.

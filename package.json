@@ -1,6 +1,7 @@
 {
   "name": "model-samples-os-checker",
   "private": true,
+  "license": "MIT",
   "description": "Model:Samples firmware check: static page, no build step. Only used to run the tests.",
   "scripts": {
     "test": "node --test \"test/*.test.js\""

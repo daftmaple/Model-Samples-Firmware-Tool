@@ -124,6 +124,8 @@ a { color: var(--accent); }
 .mode > span { color: var(--muted); font-size: 13.5px; }
 .mode.on { border: 2px solid var(--accent); padding: 13px 15px; background: var(--info-bg); }
 .hint { color: var(--muted); font-size: 13.5px; margin: 10px 2px; }
+.credit { margin-top: 28px; padding: 12px 16px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--panel); font-size: 13.5px; }
+.credit p { margin: 0; }
 .drop.small { padding: 20px 16px; }
 .need { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .need li { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; background: var(--panel); }
@@ -242,6 +244,10 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       <p class="hint">Without Web MIDI: download the file and drop it on Elektron Transfer. If nothing works over USB, use the STARTUP MENU: hold FUNC while powering on, press TRIG 4 (OS UPGRADE), and send the official <span class="mono">model-samples_OS1.13.syx</span> to the MIDI IN through a MIDI interface.</p>
     </div>
     </div>
+
+    <aside class="credit">
+      <p><strong>Credit:</strong> these ways back are <a href="https://github.com/18nelli18">18nelli18</a>'s finding, from <a href="https://github.com/18nelli18/Modded-Cycles">Modded-Cycles</a> (notes/41). They found that the Model:Samples bootstrap starts the Samples OS from a Model:Cycles container, and that recomputing a 32-byte key constant lets a Cycles OS accept the official Samples OS over USB. They also made and tested the reference builds this page checks against. The builder and the USB flasher used here are theirs, unchanged (MIT).</p>
+    </aside>
   </section>
 
   <footer>Not affiliated with Elektron. A passing check lowers the risk; it does not guarantee that the OS itself works. Back up your projects and samples with Elektron Transfer before flashing.</footer>
