@@ -3,8 +3,8 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const S = require("../sanity.js");
-const B = require("../vendor/modded-cycles/builder.js");
+const S = require("../docs/sanity.js");
+const B = require("../docs/vendor/modded-cycles/builder.js");
 const { need, firmware, firmwareFiles, tamper, sections, find, notOk, put32 } = require("./helpers.js");
 
 const SMP = "model-samples_OS1.13.syx", CYC = "model-cycles_OS1.13.syx";

@@ -3,6 +3,7 @@
 const fs = require("fs"), path = require("path");
 
 const ROOT = path.join(__dirname, "..");
+const SITE = path.join(ROOT, "docs");
 const FIRMWARE = path.join(ROOT, "firmware");
 
 /* Firmware files are never committed (Elektron's copyright). Tests that need one skip when it is missing:
@@ -86,7 +87,7 @@ function sections(blob) {
 /* Decode raw with the vendored builder, let edit(blob) change the container in place, then re-wrap it with the
  * same product and start sequence. The content checksum is recomputed unless fixChecksum is false. */
 function tamper(raw, edit, { fixChecksum = true } = {}) {
-  const B = require("../vendor/modded-cycles/builder.js");
+  const B = require("../docs/vendor/modded-cycles/builder.js");
   const u = B.unwrap(raw);
   const blob = Uint8Array.from(u.stream.subarray(8, 8 + be32(u.stream, 0)));
   edit(blob);
@@ -99,4 +100,4 @@ function tamper(raw, edit, { fixChecksum = true } = {}) {
 const find = (r, re) => r.checks.find((c) => re.test(c.title));
 const notOk = (r) => r.checks.filter((c) => !["pass", "info"].includes(c.status)).map((c) => `${c.status}: ${c.title}`);
 
-module.exports = { ROOT, firmware, firmwareFiles, need, syx, stream, sections, tamper, contentChecksum, be32, put32, find, notOk };
+module.exports = { ROOT, SITE, firmware, firmwareFiles, need, syx, stream, sections, tamper, contentChecksum, be32, put32, find, notOk };

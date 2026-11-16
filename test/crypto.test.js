@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const crypto = require("crypto");
-const S = require("../sanity.js");
+const S = require("../docs/sanity.js");
 
 const enc = (s) => new TextEncoder().encode(s);
 const sha = (b) => S.hex(S.sha256(b));

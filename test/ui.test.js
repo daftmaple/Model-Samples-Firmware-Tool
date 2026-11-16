@@ -1,10 +1,10 @@
-// The result card drawn by index.html, run against a minimal DOM stand-in (no browser, no dependencies).
+// The result card drawn by docs/index.html, run against a minimal DOM stand-in (no browser, no dependencies).
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs"), path = require("path");
-const S = require("../sanity.js");
-const { ROOT } = require("./helpers.js");
+const S = require("../docs/sanity.js");
+const { SITE } = require("./helpers.js");
 
 // ---- Minimal DOM: just what render() uses ------------------------------------------------------------------------
 class Node {
@@ -23,7 +23,7 @@ class Node {
 const text = (s) => ({ textContent: s });
 
 function loadRender() {
-  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const html = fs.readFileSync(path.join(SITE, "index.html"), "utf8");
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
   const src = scripts.find((s) => s.includes("function render(r)"));
   assert.ok(src, "index.html has the result script");

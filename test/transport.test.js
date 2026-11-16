@@ -2,7 +2,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const S = require("../sanity.js");
+const S = require("../docs/sanity.js");
 const { syx, stream, find, put32 } = require("./helpers.js");
 
 // A container that is not ELE3: enough to get past the transport into the container checks.

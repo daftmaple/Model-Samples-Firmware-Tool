@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Usage: node test/cli.js file.syx [...]   — prints the report for each file (exit 1 if any is not safe/warn)
 const fs = require("fs"), path = require("path");
-const S = require("../sanity.js");
+const S = require("../docs/sanity.js");
 let bad = 0;
 for (const f of process.argv.slice(2)) {
   const t = Date.now();

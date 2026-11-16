@@ -43,7 +43,8 @@ Files are built in the browser and refused unless they match Modded-Cycles' refe
 its fast USB method (Web MIDI: Chrome, Edge or Opera, over https or `python3 -m http.server`, not `file://`), or
 downloaded for Elektron Transfer.
 
-Open `index.html` (or host the folder on GitHub Pages). Everything runs locally; nothing is uploaded.
+Open `docs/index.html`, or publish it with GitHub Pages (Settings › Pages › Deploy from a branch, folder `/docs`): only
+the page and its scripts are served, not the tests or this README. Everything runs locally; nothing is uploaded.
 
 ## Check verdicts
 
@@ -56,10 +57,11 @@ Open `index.html` (or host the folder on GitHub Pages). Everything runs locally;
 
 ## Files
 
-- `sanity.js`: checking logic, with no DOM (browser `window.SamplesSanity`, Node `require`). `fixKey()` uses the vendored builder.
-- `revert.js`: the "Back to Samples OS" tab.
-- `vendor/modded-cycles/`: `builder.js` and `flasher.js` from Modded-Cycles at commit `259441967e39`, unchanged (MIT, licences alongside).
-- `index.html`: the UI.
+- `docs/`: the page, everything it loads and nothing else (the GitHub Pages folder; `.nojekyll` serves it as is).
+  - `index.html`: the UI.
+  - `sanity.js`: checking logic, with no DOM (browser `window.SamplesSanity`, Node `require`). `fixKey()` uses the vendored builder.
+  - `revert.js`: the "Back to Samples OS" tab.
+  - `vendor/modded-cycles/`: `builder.js` and `flasher.js` from Modded-Cycles at commit `259441967e39`, unchanged (MIT, licences alongside).
 - `test/cli.js`: command-line runner, `node test/cli.js firmware/*.syx` (`BRIEF=1` for one line per file).
 - `test/*.test.js`: tests, `npm test` (Node 22+, no dependencies).
   - `crypto`: SHA-256 / HMAC-SHA256 against published vectors and Node's `crypto`.
@@ -67,7 +69,7 @@ Open `index.html` (or host the folder on GitHub Pages). Everything runs locally;
   - `firmware`: verdicts on real files, the two ways back built with the vendored builder, and tampered copies of
     the official OS (bootstrap, updater, meta, section table, signature, checksum). Each test skips when its file
     is missing from `firmware/`.
-  - `ui`: the result card of `index.html`, against a minimal DOM stand-in.
+  - `ui`: the result card of `docs/index.html`, against a minimal DOM stand-in.
 - `firmware/`: local test files, git-ignored. Never commit Elektron firmware.
 
 The page holds no Elektron bytes and no key, only SHA-256 fingerprints of the official OS 1.13 parts. The Samples
@@ -86,4 +88,4 @@ applies the same finding.
 
 ## Licence
 
-MIT, see [LICENSE](LICENSE). The files in `vendor/modded-cycles/` keep their own MIT licences, alongside them.
+MIT, see [LICENSE](LICENSE). The files in `docs/vendor/modded-cycles/` keep their own MIT licences, alongside them.
