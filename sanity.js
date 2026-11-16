@@ -362,8 +362,8 @@ function check(raw, fileName) {
     add(G1, "fail", "Corrupted packets", `${parts.join(", ")}. First: ${firstBad}. The device would stop on RECEIVING… or refuse it.`);
   }
   facts.seqHigh = seqHigh;
-  if (seqHigh) add(G1, "warn", "Packet numbers above 16,383 use a byte ≥ 0x80",
-    `${fmt(seqHigh)} packet(s) from #${fmt(firstSeqHigh)} carry their sequence high byte unmasked (mtlib encoding). Sent over USB this has worked on hardware; over a MIDI DIN/TRS cable (STARTUP MENU via MIDI IN) a byte ≥ 0x80 ends the SysEx message and the transfer fails (harmless: power-cycle and retry another way).`);
+  if (seqHigh) add(G1, "warn", "Packet numbers above 16,383 are encoded wrongly (byte ≥ 0x80 inside SysEx)",
+    `${fmt(seqHigh)} packet(s) from #${fmt(firstSeqHigh)} carry the old unmasked sequence number instead of the 21-bit one the receivers read (Supermodel notes/212). Only the fast USB method (Elektron Transfer protocol) gets through. The STARTUP MENU over MIDI IN stalls on RECEIVING… (harmless, nothing is written), and a Web MIDI \"classic\" sender refuses it (\"Invalid MIDI message\"). Fix: download the re-wrapped file below (same container, OS and signature; only the packet numbering and checksums change), or use Supermodel's tools/rewrap_syx.py.`);
   if (junk) add(G1, "warn", "Bytes outside SysEx messages", `${fmt(junk)} byte(s) between or after messages (ignored by most senders, but not expected).`);
   if (badLen || unterminated) return finish(result);
 
@@ -608,9 +608,9 @@ function routes(f) {
     why: smp ? "Ignored: wrong transport for a Cycles OS." : "Refused (\"Upgrade Failed\"): that OS checks with the Model:Cycles key. Nothing is written. Use the STARTUP MENU." });
   R.push({ where: "Model:Samples in any state, from its STARTUP MENU (hold FUNC while powering on, then TRIG 4, OS UPGRADE)",
     how: "MIDI IN through a MIDI interface (TRS or DIN with adapter). USB does not work in this menu.",
-    ok: !smp ? "no" : f.seqHigh ? "risky" : "yes",
+    ok: !smp || f.seqHigh ? "no" : "yes",
     why: !smp ? "Ignored: the STARTUP MENU only takes the Model:Samples transport (0x0F). Use the smp-os version."
-      : f.seqHigh ? "Transport and signature are right, but packets past #16,383 carry a byte ≥ 0x80 that breaks SysEx on a MIDI cable. Expect the transfer to stall on RECEIVING… (harmless)."
+      : f.seqHigh ? "Not as it is: packets past sequence 16,383 carry a byte ≥ 0x80, and the transfer stalls on RECEIVING… (harmless, nothing is written). Use the re-wrapped file, which this route accepts."
       : "The recovery path: always available, whatever OS is installed. Slow (minutes at MIDI speed)." });
   R.push({ where: "A Model:Cycles (any OS)", how: "—", ok: "no",
     why: smp ? "Do not send it. A real Model:Cycles on its own OS ignores it, but a Model:Cycles running the Samples OS would install it and then refuse Model:Cycles firmwares over USB."
@@ -655,6 +655,64 @@ function revertFile(result) {
   return result;
 }
 
+/* Re-wrap a .syx: same decoded stream, product and start sequence, packed with the 21-bit sequence number and the
+ * receivers' packet checksum (Supermodel 3f4ce51, notes/212: rewrap()). Only the packet numbering and checksums of
+ * packets past sequence 16,383 change; the container, OS and signature are untouched. Throws if the file cannot be
+ * re-wrapped faithfully. */
+function pack7(b) {
+  const out = [];
+  for (let i = 0; i < b.length; i += 7) {
+    let hi = 0;
+    const n = Math.min(7, b.length - i);
+    for (let k = 0; k < n; k++) hi |= (b[i + k] >> 7) << (6 - k);
+    out.push(hi);
+    for (let k = 0; k < n; k++) out.push(b[i + k] & 0x7f);
+  }
+  return out;
+}
+function decode(raw) {
+  const msgs = [];
+  let i = 0;
+  for (;;) {
+    const a = raw.indexOf(0xf0, i); if (a < 0) break;
+    const b = raw.indexOf(0xf7, a); if (b < 0) throw new Error("unterminated SysEx");
+    msgs.push(raw.subarray(a, b + 1)); i = b + 1;
+  }
+  const head = msgs[0], prod = head[4];
+  if (!(prod in PRODUCTS)) throw new Error("not a Model:Samples / Model:Cycles file");
+  const data = msgs.slice(1, -1), stream = new Uint8Array(data.length * BYTES_PER_MSG);
+  let sp = 0;
+  for (const m of data) {
+    if (m.length !== MSG_LEN || m[CS_OFF] !== msgChecksum(m, PRODUCTS[prod][1])) throw new Error("corrupted packet");
+    sp = unpack7Into(m.subarray(PAYLOAD_OFF, PAYLOAD_END), stream, sp);
+  }
+  return { prod, start: u21(head, 9), stream: stream.subarray(0, sp) };
+}
+function rewrap(raw) {
+  raw = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+  const { prod, start, stream } = decode(raw);
+  if (stream.length % BYTES_PER_MSG) throw new Error("stream length is not a whole number of packets");
+  const dev = PRODUCTS[prod][1], count = stream.length / BYTES_PER_MSG;
+  const p21 = (v) => [(v >> 14) & 0x7f, (v >> 7) & 0x7f, v & 0x7f];
+  const pre = [0xf0, ...ELEKTRON, prod, 0x00];
+  const out = new Uint8Array(32 + count * MSG_LEN);
+  let o = 0;
+  const put = (arr) => { out.set(arr, o); o += arr.length; };
+  put([...pre, 0x7f, 0x01, dev, ...p21(start), ...p21(count), 0xf7]);
+  for (let n = 0; n < count; n++) {
+    const m = new Uint8Array(MSG_LEN);
+    m.set([...pre, 0x7e, ...p21(start + n)], 0);
+    m.set(pack7(stream.subarray(n * BYTES_PER_MSG, (n + 1) * BYTES_PER_MSG)), PAYLOAD_OFF);
+    m[MSG_LEN - 1] = 0xf7;
+    m[CS_OFF] = msgChecksum(m, dev);
+    put(m);
+  }
+  put([...pre, 0x7f, 0x02, dev, ...p21(start), ...p21(count), 0xf7]);
+  for (let k = 0; k < out.length; k++) if ((out[k] & 0x80) && out[k] !== 0xf0 && out[k] !== 0xf7) throw new Error("re-wrap: byte ≥ 0x80 left");
+  if (!eq(decode(out).stream, stream)) throw new Error("re-wrap: read-back differs");
+  return out;
+}
+
 function finish(result) {
   const worst = result.checks.reduce((m, c) => Math.max(m, RANK[c.status]), 0);
   result.verdict = ["safe", "warn", "fail", "critical"][worst];
@@ -690,7 +748,7 @@ function report(r) {
   return L.join("\n");
 }
 
-const API = { check, report, sha256, hmacSha256, hex, REF };
+const API = { check, report, rewrap, sha256, hmacSha256, hex, REF };
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 if (typeof window !== "undefined") window.SamplesSanity = API;
 })(this);

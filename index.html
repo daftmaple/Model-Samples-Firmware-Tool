@@ -325,6 +325,21 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     };
     act.append(copy, save);
+    if (f.seqHigh && r.verdict === "warn") {
+      const fix = el("button", "primary", "Download re-wrapped .syx");
+      fix.title = "Same container, OS and signature; packet numbering fixed for MIDI IN and Web MIDI";
+      fix.onclick = () => {
+        try {
+          const out = S.rewrap(r.raw);
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([out], { type: "application/octet-stream" }));
+          a.download = (f.fileName || "firmware").replace(/\.syx$/i, "") + "_rewrapped.syx";
+          a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+          fix.textContent = "Saved: check it again here";
+        } catch (e) { fix.textContent = "Re-wrap failed: " + e.message; fix.disabled = true; }
+      };
+      act.prepend(fix);
+    }
     box.append(act);
     return box;
   }
@@ -337,7 +352,9 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       await new Promise((res) => setTimeout(res, 20));      // let the message paint
       try {
         const buf = new Uint8Array(await file.arrayBuffer());
-        busy.replaceWith(render(S.check(buf, file.name)));
+        const res = S.check(buf, file.name);
+        res.raw = buf;
+        busy.replaceWith(render(res));
       } catch (e) {
         busy.textContent = `Could not check ${file.name}: ${e.message}`;
       }
