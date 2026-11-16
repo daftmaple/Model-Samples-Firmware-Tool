@@ -1,0 +1,3 @@
+# Firmware files (Elektron OS images and builds) are never committed
+firmware/
+*.syx
