@@ -39,6 +39,13 @@ Open `index.html` (or host the folder on GitHub Pages). Everything runs locally;
 - `vendor/modded-cycles/`: `builder.js` and `flasher.js` from Modded-Cycles at commit `259441967e39`, unchanged (MIT, licences alongside).
 - `index.html`: the UI.
 - `test/cli.js`: command-line runner, `node test/cli.js firmware/*.syx` (`BRIEF=1` for one line per file).
+- `test/*.test.js`: tests, `npm test` (Node 22+, no dependencies).
+  - `crypto`: SHA-256 / HMAC-SHA256 against published vectors and Node's `crypto`.
+  - `transport`: SysEx transport, container front checks and `rewrap()` on synthetic files.
+  - `firmware`: verdicts on real files, the two ways back built with the vendored builder, and tampered copies of
+    the official OS (bootstrap, updater, meta, section table, signature, checksum). Each test skips when its file
+    is missing from `firmware/`.
+  - `ui`: the result card of `index.html`, against a minimal DOM stand-in.
 - `firmware/`: local test files, git-ignored. Never commit Elektron firmware.
 
 The page holds no Elektron bytes and no key, only SHA-256 fingerprints of the official OS 1.13 parts. The Samples
