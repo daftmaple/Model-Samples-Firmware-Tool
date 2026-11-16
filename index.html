@@ -142,6 +142,7 @@ a { color: var(--accent); }
 .rv-flow .step-h { margin-top: 24px; }
 .step.off { opacity: .6; }
 .step h4 { margin: 0 0 4px; font-size: 15px; }
+.step .skip { margin: 4px 0 8px; padding: 8px 12px; background: var(--info-bg); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 14px; font-weight: 600; }
 .step .sub { margin: 0 0 6px; color: var(--muted); font-size: 14px; }
 .step .meta { margin: 0 0 10px; font-size: 13px; font-family: var(--mono); overflow-wrap: anywhere; }
 .step .why { margin: 8px 0 0; font-size: 13.5px; color: var(--warn); }
@@ -214,7 +215,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       </button>
       <button class="mode" id="rv-mode-unfixed">
         <strong>Installed another way, without the key fix</strong>
-        <span>For example an elektron-firmware-tool cross-flash. Uses <em>Model:Cycles → Samples OS</em> and then the official Samples OS as a recommended clean-up. Needs both official OS files.</span>
+        <span>For example an elektron-firmware-tool cross-flash. Uses <em>Model:Cycles → Samples OS</em> and then, optionally, the official Samples OS as a clean-up. Needs both official OS files.</span>
       </button>
     </div>
     <p class="hint">Not sure? Drop the file you installed in the <a href="#check">Check a file</a> tab: its last check says whether the key fix is there. Or simply try the first way: a Cycles OS without the key fix refuses it ("Upgrade Failed") and nothing changes. The second way is refused the same way by an OS that has the fix.</p>

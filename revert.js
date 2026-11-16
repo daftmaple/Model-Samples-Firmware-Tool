@@ -51,8 +51,9 @@ function steps() {
           if (hexSha(raw) !== REF_SAMPLES_ON_CYCLES) throw new Error("result is not Modded-Cycles' reference build");
           return raw;
         } },
-      { id: "official", title: "Step 2 (recommended clean-up): the official Model:Samples OS",
+      { id: "official", title: "Step 2 (optional clean-up): the official Model:Samples OS",
         sub: "After step 1 the machine already runs the Model:Samples OS, but its flash still holds the Model:Cycles container (header, meta, a copy of the Cycles bootstrap, Cycles signature). Once it has restarted as a Model:Samples, send the official file, unchanged, so the flash ends exactly as after an Elektron update.",
+        skip: "Skip this if you are about to flash a custom smp-os build: it replaces the whole container anyway.",
         needs: ["samples"], product: 0x0f, name: "model-samples_OS1.13.syx", build: () => smp },
     ];
   }
@@ -221,7 +222,9 @@ function render() {
   for (const s of list) {
     const ready = s.needs.every((k) => st.official[k]);
     const card = el("div", "step" + (ready ? "" : " off"));
-    card.append(el("h4", null, s.title), el("p", "sub", s.sub));
+    card.append(el("h4", null, s.title));
+    if (s.skip) card.append(el("p", "skip", s.skip));
+    card.append(el("p", "sub", s.sub));
     const meta = el("p", "meta");
     meta.textContent = ready ? `${s.name} · goes to a machine that answers as ${DEV[s.product]}` : "Add the official file(s) above first.";
     card.append(meta);

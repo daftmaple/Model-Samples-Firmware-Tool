@@ -630,7 +630,7 @@ function afterwards(f) {
       next: "Change mods over USB with cyc-os files. Go back to the Samples OS over USB with the \"Back to Samples OS\" tab (first way: Model:Samples: back to its OS), or with the official model-samples_OS1.13.syx through the STARTUP MENU over MIDI IN. Before going back, set tracks using added machines back to the original six." };
   if (f.os === "cycles")
     return { now: "A Model:Cycles OS that checks updates with the Model:Cycles key (no key fix).",
-      next: "Over USB it only accepts Cycles-signed files, so cyc-os/smp-os Samples files are refused. Go back over USB with the \"Back to Samples OS\" tab (second way: Model:Cycles → Samples OS, then the official Samples OS as a clean-up), or through the STARTUP MENU over MIDI IN with the official model-samples_OS1.13.syx or an smp-os file." };
+      next: "Over USB it only accepts Cycles-signed files, so cyc-os/smp-os Samples files are refused. Go back over USB with the \"Back to Samples OS\" tab (second way: Model:Cycles → Samples OS, then, optionally, the official Samples OS as a clean-up), or through the STARTUP MENU over MIDI IN with the official model-samples_OS1.13.syx or an smp-os file." };
   return { now: "An OS this page does not recognise.", next: "Its USB update path is unknown. The STARTUP MENU over MIDI IN with the official model-samples_OS1.13.syx is the way back." };
 }
 
@@ -642,7 +642,7 @@ function revertFile(result) {
     { group: G, status: "info", title: "Modded-Cycles “Model:Cycles → Samples OS” reference file",
       detail: "The official Model:Samples OS 1.13 inside the official Model:Cycles container, signed with the Cycles key; byte-identical to Modded-Cycles' tested reference build." },
     { group: G, status: "warn", title: "Not a custom OS for the Model:Samples: a way back, for one case only",
-      detail: "Use it only on a Model:Samples that runs a Cycles OS WITHOUT the key fix. That OS writes the Cycles container as-is, the Model:Samples bootstrap (never replaced: same version) starts the Samples OS from it, shown in emulation (Modded-Cycles notes/41 §8). Recommended clean-up afterwards: send the official model-samples_OS1.13.syx over USB to restore the official container. The \"Back to Samples OS\" tab does both." });
+      detail: "Use it only on a Model:Samples that runs a Cycles OS WITHOUT the key fix. That OS writes the Cycles container as-is, the Model:Samples bootstrap (never replaced: same version) starts the Samples OS from it, shown in emulation (Modded-Cycles notes/41 §8). Optional clean-up afterwards: send the official model-samples_OS1.13.syx over USB to restore the official container (skip it if you are about to flash a custom smp-os build). The \"Back to Samples OS\" tab does both." });
   result.verdict = "warn";
   const f = result.facts;
   f.transport = "cycles";
@@ -654,7 +654,7 @@ function revertFile(result) {
     { where: "A real Model:Cycles", how: "USB", ok: "no", why: "Do not send it unless you want it: a Model:Cycles accepts it and switches to the Samples OS (Modded-Cycles' original use of this file)." },
   ];
   f.after = { now: "The official Model:Samples OS, started from a Model:Cycles container (Cycles meta and updater).",
-    next: "Recommended clean-up: send the official model-samples_OS1.13.syx over USB (the Samples OS accepts it) so the flash is exactly as after an Elektron update." };
+    next: "Optional clean-up: send the official model-samples_OS1.13.syx over USB (the Samples OS accepts it) so the flash is exactly as after an Elektron update. Skip it if you are about to flash a custom smp-os build, which replaces the whole container anyway." };
   f.delivery = f.routes[0].where;
   return result;
 }

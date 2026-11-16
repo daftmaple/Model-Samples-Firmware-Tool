@@ -21,7 +21,23 @@ Two warnings come with a corrected file to download, checked again before it is 
 | Cycles OS on the Model:Samples | Way back | Needs |
 |---|---|---|
 | Installed with Modded-Cycles or a Modded-Cycles derivative (key fix present) | *Model:Samples: back to its OS*, one step | `model-samples_OS1.13.syx` |
-| Installed another way, e.g. an elektron-firmware-tool cross-flash (no key fix) | *Model:Cycles → Samples OS*, then the official Samples OS as a recommended clean-up | both official OS files |
+| Installed another way, e.g. an elektron-firmware-tool cross-flash (no key fix) | *Model:Cycles → Samples OS*, then, optionally, the official Samples OS as a clean-up | both official OS files |
+
+- **The clean-up is optional.** After *Model:Cycles → Samples OS* the machine already runs the official Samples OS;
+  only its flash still holds the Model:Cycles container (meta, updater, Cycles signature). Sending the official
+  `model-samples_OS1.13.syx` restores the exact official state. Skip it if you are about to flash a custom smp-os build:
+  every OS update writes a whole container, so that replaces it anyway.
+- **Why only the second way asks "is this a Model:Samples?"** Over USB, a Model:Samples on a Cycles OS answers as a
+  Model:Cycles, exactly like a real one, so only the front panel tells them apart. Both files use the Model:Cycles
+  transport (0x11); the signature decides:
+
+  | File | Signed with | Model:Samples on that Cycles OS | Real Model:Cycles |
+  |---|---|---|---|
+  | *Model:Samples: back to its OS* | Samples key (official Samples OS, unchanged) | accepted (the key fix makes it check with the Samples key) | refused ("Upgrade Failed"), nothing written |
+  | *Model:Cycles → Samples OS* | Cycles key | accepted | **accepted: it switches to the Samples OS** |
+
+  So *Send over USB* for *Model:Cycles → Samples OS* waits for a ticked "this is a Model:Samples" box; the first way
+  needs no such check. Downloading the file is never blocked.
 
 Files are built in the browser and refused unless they match Modded-Cycles' reference SHA-256. They are sent with
 its fast USB method (Web MIDI: Chrome, Edge or Opera, over https or `python3 -m http.server`, not `file://`), or
