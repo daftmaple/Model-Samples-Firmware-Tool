@@ -11,7 +11,7 @@ A static page for a Model:Samples running a custom (Model:Cycles-based) OS.
 1. Open the page in Chrome, Edge or Opera on a computer (Web MIDI), and back up your projects with Elektron Transfer.
 2. Pick what you want to do on the **Start** view: *Install a Cycles OS*, *Back to Samples OS*, or *Check a file*.
 3. Follow the numbered steps. To install mods: say which OS the machine runs, add your `.syx` files, then connect
-   and send over USB, or download the file for Elektron Transfer or a SysEx tool.
+   and send over USB, or download the file for a SysEx tool.
 
 If something goes wrong, the **Help & recovery** view has the STARTUP MENU steps (FUNC + power on, TRIG 4, the official
 `model-samples_OS1.13.syx` to MIDI IN). It also explains which OS a machine runs and the terms used on the page.
@@ -21,7 +21,8 @@ If something goes wrong, the **Help & recovery** view has the STARTUP MENU steps
 **Check a file.** Checks a `.syx` before you flash it: only the MAIN OS (section 3) may differ from Elektron's official
 Model:Samples OS 1.13 container, and nothing the recovery path (bootstrap / STARTUP MENU) depends on may be touched.
 Each report says where and when the file can be flashed and what the device can accept afterwards.
-Two warnings come with a corrected file to download, checked again before it is offered:
+Two warnings come with a corrected file, from one "Download the fixed .syx" button, checked again before it is offered
+(when a file has both, the key fix also fixes the packet numbering):
 - packet numbers past 16,383 in the old encoding: a re-wrapped `.syx` (same container, only the packet numbering);
 - a Model:Cycles OS without the 32-byte key fix (e.g. an elektron-firmware-tool cross-flash): the same file with the
   key fix, as Modded-Cycles applies it (only those 32 bytes of the OS change, re-signed with the Samples key derived
@@ -31,8 +32,7 @@ Two warnings come with a corrected file to download, checked again before it is 
 **Install a Cycles OS.** Installs a modded Model:Cycles OS built for a real Model:Cycles (Modded-Cycles or a
 Modded-Cycles derivative) on a Model:Samples, from that `.syx` and the official `model-samples_OS1.13.syx`. Laid out like
 "Back to Samples OS", in a different order: (1) which OS the Model:Samples runs now, (2) your files, (3) connect and
-send over USB (the machine's answer is compared with step 1), or (4) download the file for Elektron Transfer or a SysEx
-tool. It builds
+send over USB (the machine's answer is compared with step 1), or (4) download the file for a SysEx tool. It builds
 the same file as Modded-Cycles' `mods_for_samples.py` / `modsForSamples`: the OS (section 3) in the official Samples
 container, with the 32-byte key fix (only those bytes change), signed with the Samples key. The official Model:Cycles
 OS is not needed. The Model:Cycles key comes from the file's own bootstrap after it matches Elektron's fingerprint, and
@@ -41,7 +41,7 @@ offered only if "Safe", and USB sending refuses a machine that answers as the ot
 
 | Output | Transport | Flash it from |
 |---|---|---|
-| `…_for-samples_smp-os.syx` | 0x0F | a Model:Samples on its own OS (USB: Transfer, any SysEx tool), or its STARTUP MENU over MIDI IN |
+| `…_for-samples_smp-os.syx` | 0x0F | a Model:Samples on its own OS (USB: any SysEx tool), or its STARTUP MENU over MIDI IN |
 | `…_for-samples_cyc-os.syx` | 0x11 | a Model:Samples already on a Cycles OS with the key fix, over USB (changing mods later) |
 
 The STARTUP MENU takes only the smp-os file, whatever OS is installed: to flash from it with a SysEx tool, pick "Its own
@@ -55,9 +55,9 @@ accepted too, with the key fix added if missing. What it cannot check is whether
 mod works on a Model:Samples. The hardware is the same and Modded-Cycles builds the same mods for both machines, and
 the STARTUP MENU remains the way back if an OS does not start.
 
-The two tabs link to each other. A Check result for a Model:Cycles build, or for a Cycles OS packed for the Model:Samples,
-has an "Install it on a Model:Samples" button that opens this tab with the file loaded. Each file this tab builds has a
-"Check it" button that opens its full report in the Check tab.
+Files do not move between tabs: each tab takes its own files, and leaving a tab clears them (with its choices and
+log; not while it is sending). To see the full report of a file this tab built, download it and drop it on the Check
+tab.
 
 **Back to Samples OS.** Brings a Model:Samples that runs a Model:Cycles OS back to its own OS over USB, the two ways
 18nelli18's [Modded-Cycles](https://github.com/18nelli18/Modded-Cycles) flasher offers:
@@ -85,7 +85,7 @@ has an "Install it on a Model:Samples" button that opens this tab with the file 
 
 Files are built in the browser and refused unless they match Modded-Cycles' reference SHA-256. They are sent with
 its fast USB method (Web MIDI: Chrome, Edge or Opera, over https or `python3 -m http.server`, not `file://`), or
-downloaded for Elektron Transfer.
+downloaded for a SysEx tool.
 
 Open `docs/index.html`, or publish it with GitHub Pages (Settings › Pages › Deploy from a branch, folder `/docs`): only
 the page and its scripts are served, not the tests or this README. Everything runs locally; nothing is uploaded.
@@ -104,7 +104,7 @@ the page and its scripts are served, not the tests or this README. Everything ru
 - `docs/`: the page, everything it loads and nothing else (the GitHub Pages folder; `.nojekyll` serves it as is).
   - `index.html`: the markup of every view (Start, the three tabs, Help & recovery). No inline CSS or script.
   - `style.css`: all styles, light and dark.
-  - `app.js`: views and navigation (the hash picks the view: `#install-cycles` opens Install, `#help-recovery` opens
+  - `app.js`: views and navigation (the hash picks the view: `#revert-unfixed` opens Back to Samples OS, `#help-recovery` opens
     Help at that section; keyboard tabs).
   - `ui.js`: DOM helpers shared by every tab (`el`, drop zones, file checklist, log, downloads).
   - `sanity.js`: checking logic, with no DOM (browser `window.SamplesSanity`, Node `require`). `fixKey()` uses the vendored builder.
@@ -126,7 +126,7 @@ the page and its scripts are served, not the tests or this README. Everything ru
     Modded-Cycles' `modsForSamples` in both transports, the stock Cycles OS (Modded-Cycles' reference file), Supermodel
     past 0x40200000, files already packed for the Model:Samples, and refusals (bootstrap, signature, update-check code,
     key constant, wrong files).
-  - `ui`: the result card of `docs/check.js` (and its "Install it on a Model:Samples" button), the "Install a Cycles
+  - `ui`: the result card of `docs/check.js` (and its fixed-file buttons), the "Install a Cycles
     OS" tab (including the machine's answer checked against step 1, and the separate download section) and the "Back to Samples OS" tab, against a minimal DOM
     stand-in.
 - `firmware/`: local test files, git-ignored. Never commit Elektron firmware.

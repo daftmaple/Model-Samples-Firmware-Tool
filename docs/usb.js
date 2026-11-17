@@ -32,7 +32,7 @@ function panel({ prefix, log, render }) {
   async function connect() {
     if (!supported()) {
       log(!navigator.requestMIDIAccess
-        ? "This browser has no Web MIDI: use Chrome, Edge or Opera on a computer, or download the file and send it with Elektron Transfer."
+        ? "This browser has no Web MIDI: use Chrome, Edge or Opera on a computer, or download the file and send it with a SysEx tool."
         : "Web MIDI needs a secure page: open the hosted version, or serve this folder (python3 -m http.server) instead of opening the file.", "bad");
       render(); return;
     }
@@ -137,7 +137,7 @@ function panel({ prefix, log, render }) {
     id("port").hidden = !u.midi;
     const d = u.dev;
     id("dev").textContent = !supported()
-      ? "This browser cannot reach the machine over USB (no Web MIDI). Use Chrome, Edge or Opera on a computer, or download the file instead and send it with Elektron Transfer."
+      ? "This browser cannot reach the machine over USB (no Web MIDI). Use Chrome, Edge or Opera on a computer, or download the file instead and send it with a SysEx tool."
       : !u.midi ? "Not connected." : !d ? "" : d.state === "ok"
       ? `Answers as ${d.device || "Elektron device " + d.id} “${d.name}”, OS ${d.version}.` : d.state === "probing" ? "Asking…" : "No answer.";
     renderProgress();

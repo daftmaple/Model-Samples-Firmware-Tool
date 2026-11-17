@@ -1,5 +1,6 @@
-/* Views and navigation. The hash picks the view: "#install-cycles" opens "install", "#help-recovery" opens "help" and
- * scrolls to #help-recovery. No hash: the Start view. The nav follows the ARIA tabs pattern (arrow keys, Home, End). */
+/* Views and navigation. The hash picks the view: "#revert-unfixed" opens "revert", "#help-recovery" opens "help" and
+ * scrolls to #help-recovery. No hash: the Start view. The nav follows the ARIA tabs pattern (arrow keys, Home, End).
+ * Files never carry over: leaving a tab resets it (its files, choices and log), except while it is sending. */
 (function () {
 "use strict";
 
@@ -11,8 +12,13 @@ function current() {
   return VIEWS.includes(v) ? v : "start";
 }
 
+const TABS = () => ({ check: window.SamplesCheck, install: window.SamplesInstall, revert: window.SamplesRevert });
+let shown = null;
+
 function show() {
   const view = current();
+  if (shown && shown !== view) { const t = TABS()[shown]; if (t && t.reset) t.reset(); }
+  shown = view;
   for (const t of tabs) {
     const on = t.dataset.tab === view;
     t.setAttribute("aria-selected", String(on));

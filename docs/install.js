@@ -9,7 +9,7 @@
  * A Cycles OS without the key fix takes neither: back to the Samples OS first ("Back to Samples OS" tab, second way).
  *
  * Steps: 1. which OS it runs, 2. files, 3. connect and send over USB (the machine's answer is compared with step 1),
- * 4. or download the file for Elektron Transfer or a SysEx tool.
+ * 4. or download the file for a SysEx tool.
  */
 (function () {
 "use strict";
@@ -17,6 +17,7 @@
 const S = window.SamplesSanity, UI = window.SamplesUI;
 const { $, el, kb } = UI;
 const st = { mode: null, mod: null, smp: null, result: null, error: null, busy: false, log: [] };
+let gen = 0;                                               // bumped by reset(): a build still running is dropped
 const hexSha = (raw) => S.hex(S.sha256(raw));
 const DEV = { 0x11: "Model:Cycles", 0x0f: "Model:Samples" };
 
@@ -31,13 +32,13 @@ const STEPS = {
   samples: { id: "smp", key: "smp", suffix: "smp-os", product: 0x0f,
     title: "Your mods, for a Model:Samples on its own OS (smp-os)",
     sub: "The machine restarts on the Cycles OS with your mods; from then on Transfer shows it as a Model:Cycles.",
-    where: "Send it with Elektron Transfer or a SysEx tool over USB while the Model:Samples OS runs, or with a SysEx tool from the STARTUP MENU over MIDI IN, whatever OS is installed.",
+    where: "Send it with a SysEx tool over USB while the Model:Samples OS runs, or from the STARTUP MENU over MIDI IN, whatever OS is installed.",
     refused: "" },
   cycles: { id: "cyc", key: "cyc", suffix: "cyc-os", product: 0x11,
     title: "Your mods, for a Model:Samples already on a Cycles OS (cyc-os)",
     sub: "Replaces the Cycles OS it runs now with this one. The machine restarts on the new Cycles OS.",
     note: "Over USB only, while the Cycles OS runs. The STARTUP MENU ignores this file: for that route, pick “Its own Model:Samples OS” in step 1 and use the smp-os file.",
-    where: "Send it with Elektron Transfer or a SysEx tool over USB, while the Cycles OS runs. Not from the STARTUP MENU: it ignores this file (use the smp-os file there).",
+    where: "Send it with a SysEx tool over USB, while the Cycles OS runs. Not from the STARTUP MENU: it ignores this file (use the smp-os file there).",
     refused: "If it says “Upgrade Failed”, its Cycles OS has no key fix (or it is a real Model:Cycles), and nothing is written: go back to the Samples OS first (Back to Samples OS tab, second way), or use the STARTUP MENU with the smp-os file." },
 };
 function steps() {
@@ -56,14 +57,13 @@ async function addFiles(files) {
   await build();
 }
 
-/* From the Check a file tab: the file it just checked. */
-function load(name, raw) { st.mod = { name, raw }; return build(); }
-
 async function build() {
   st.result = null; st.error = null;
   if (!st.mod || !st.smp) { render(); return; }
   st.busy = true; render();
+  const my = gen;
   await new Promise((res) => setTimeout(res, 20));          // let "Packing…" paint
+  if (my !== gen) return;
   try {
     st.result = S.forSamples(st.mod.raw, st.smp);
     const r = st.result;
@@ -100,12 +100,6 @@ function download(step) {
   log(`Saved ${step.name} (${kb(raw.length)}, SHA-256 ${hexSha(raw).slice(0, 16)}…).`, "ok");
 }
 
-function checkIt(step) {
-  if (!window.SamplesCheck) return;
-  location.hash = "#check";
-  window.SamplesCheck.show(step.name, st.result[step.key]);
-}
-
 function choose(mode) { st.mode = mode; render(); }
 
 /* What the machine's answer means next to the OS chosen in step 1, under the Connect button. */
@@ -120,7 +114,7 @@ function detected() {
     : "It runs a Cycles OS: with the key fix, pick “A Cycles OS with the key fix” in step 1; without it, go back to the Samples OS first with the Back to Samples OS tab.";
 }
 
-/* One file to download, for Elektron Transfer or a SysEx tool. */
+/* One file to download, for a SysEx tool. */
 function downloadRow(s, ready) {
   const r = el("div", "step" + (ready ? "" : " off"));
   r.append(el("h4", "mono", s.name));
@@ -130,11 +124,7 @@ function downloadRow(s, ready) {
   const dl = el("button", "primary", "Download .syx");
   dl.disabled = !ready;
   dl.onclick = () => download(s);
-  const ck = el("button", null, "Check it");
-  ck.title = "Open this file's full report in the Check a file tab";
-  ck.disabled = !ready;
-  ck.onclick = () => checkIt(s);
-  row.append(dl, ck);
+  row.append(dl);
   r.append(row);
   return r;
 }
@@ -176,22 +166,24 @@ function render() {
   UI.renderLog($("in-log"), st.log);
 }
 
+/* Leaving the tab: forget the files, the choice and the log (not the USB connection). Not while sending. */
+function reset() {
+  if (usb.sending) return false;
+  gen++;
+  Object.assign(st, { mode: null, mod: null, smp: null, result: null, error: null, busy: false, log: [] });
+  render();
+  return true;
+}
+
 function init() {
   if (!S || !usb || !$("in-drop")) return;
   usb.init();
   $("in-mode-samples").onclick = () => choose("samples");
   $("in-mode-cycles").onclick = () => choose("cycles");
   UI.dropZone($("in-drop"), $("in-file"), addFiles);
-  // Deep links (Check a file tab): #install-samples / #install-cycles preselect the OS the machine runs
-  const fromHash = () => {
-    const m = /^#install-(samples|cycles)$/.exec(location.hash);
-    if (m) choose(m[1]);
-  };
-  window.addEventListener("hashchange", fromHash);
-  fromHash();
   render();
 }
 
-window.SamplesInstall = { state: st, usb, steps, devProblem, baseName, addFiles, load, init, render };
+window.SamplesInstall = { state: st, usb, steps, devProblem, baseName, addFiles, init, render, reset };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();

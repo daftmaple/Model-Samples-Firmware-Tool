@@ -1,5 +1,5 @@
 /* "Check a file" tab: one result card per dropped .syx (SamplesSanity.check), with its corrected file to download when
- * there is one, and "Install it on a Model:Samples" for a Cycles OS. */
+ * there is one. Files stay in this tab: nothing is handed to another tab. */
 (function () {
 "use strict";
 
@@ -134,48 +134,39 @@ function render(r) {
   save.onclick = () => UI.save(S.report(r), stem(f) + "_check.txt", "text/plain");
   act.append(copy, save);
 
-  /* A corrected file, built on click and offered as a download. */
-  const fixButton = (label, title, make, suffix, failed) => {
-    const b = el("button", "primary", label);
-    b.title = title;
+  /* One corrected file, built on click. The key fix also writes the new packet numbering, so it covers both fixes. */
+  const fix = r.verdict !== "warn" ? null
+    : f.canFixKey ? { make: S.fixKey, suffix: "_keyfix.syx",
+      title: "Adds the 32-byte key fix: same container and OS, only those bytes change, re-signed with the Model:Samples key" + (f.seqHigh ? "; packet numbering fixed too" : "") }
+    : f.seqHigh ? { make: S.rewrap, suffix: "_rewrapped.syx",
+      title: "Fixes the packet numbering for MIDI IN and Web MIDI: same container, OS and signature" }
+    : null;
+  if (fix) {
+    const b = el("button", "primary", "Download the fixed .syx");
+    b.title = fix.title;
     b.onclick = () => {
-      try { UI.save(make(r.raw), stem(f) + suffix); b.textContent = "Saved: check it again here"; }
-      catch (e) { b.textContent = failed + e.message; b.disabled = true; }
+      try { UI.save(fix.make(r.raw), stem(f) + fix.suffix); b.textContent = "Saved: check it again here"; }
+      catch (e) { b.textContent = "Fix failed: " + e.message; b.disabled = true; }
     };
     act.prepend(b);
-  };
-  if (f.seqHigh && r.verdict === "warn")
-    fixButton("Download re-wrapped .syx", "Same container, OS and signature; packet numbering fixed for MIDI IN and Web MIDI",
-      S.rewrap, "_rewrapped.syx", "Re-wrap failed: ");
-  if (f.canFixKey && r.verdict === "warn")
-    fixButton("Download .syx with the key fix", "Same container and OS; only the 32-byte key constant changes, re-signed with the Model:Samples key",
-      S.fixKey, "_keyfix.syx", "Key fix failed: ");
-
-  // Install it from the Install a Cycles OS tab: a Model:Cycles build, or a Cycles OS packed for the Model:Samples
-  if (window.SamplesInstall && r.raw && (f.cyclesContainer || (f.os === "cycles" && (r.verdict === "safe" || r.verdict === "warn")))) {
-    const go = el("button", "primary", "Install it on a Model:Samples →");
-    go.title = f.cyclesContainer ? "Pack it for the Model:Samples, then send it over USB or download it"
-      : "Send it over USB, or get it in the other transport (smp-os / cyc-os)";
-    go.onclick = () => {
-      window.SamplesInstall.load(f.fileName || "firmware.syx", r.raw);
-      location.hash = f.cyclesContainer ? "#install" : f.transport === "cycles" ? "#install-cycles" : "#install-samples";
-      window.scrollTo(0, 0);
-    };
-    act.prepend(go);
   }
   box.append(act);
   return box;
 }
 
+let gen = 0;                                               // bumped by reset(): a check still running is dropped
+
 async function handle(files) {
-  const out = UI.$("out");
+  const out = UI.$("out"), my = ++gen;
   out.textContent = "";
   for (const file of files) {
+    if (my !== gen) return;
     const busy = el("div", "result busy", `Checking ${file.name}…`);
     out.append(busy);
     await new Promise((res) => setTimeout(res, 20));      // let the message paint
     try {
       const buf = new Uint8Array(await file.arrayBuffer());
+      if (my !== gen) return;
       const res = S.check(buf, file.name);
       res.raw = buf;
       busy.replaceWith(render(res));
@@ -189,7 +180,9 @@ function init() {
   if (UI.$("drop")) UI.dropZone(UI.$("drop"), UI.$("file"), handle);
 }
 
-// From the Install a Cycles OS tab: check the file it built
-window.SamplesCheck = { show: (name, raw) => handle([{ name, arrayBuffer: async () => raw }]), render };
+/* Leaving the tab: forget the results and their files. */
+function reset() { gen++; UI.$("out").textContent = ""; }
+
+window.SamplesCheck = { render, reset };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();

@@ -317,7 +317,7 @@ function check(raw, fileName) {
   facts.transport = prod === 0x0f ? "samples" : "cycles";
   add(G1, "info", `Transport: ${prodName} (product 0x${prod.toString(16).padStart(2, "0")}, device byte 0x${devByte.toString(16).padStart(2, "0")})`,
     prod === 0x0f
-      ? "Accepted by a Model:Samples running its own OS (USB / Elektron Transfer) and by its STARTUP MENU over MIDI IN."
+      ? "Accepted by a Model:Samples running its own OS (USB, with a SysEx tool) and by its STARTUP MENU over MIDI IN."
       : "Only a Model:Samples already running a Cycles OS packed for it (Samples key) takes this over USB. Its STARTUP MENU ignores it.");
 
   const markerOk = (m, kind) => m.length === 16 && m[4] === prod && m[5] === 0x00 && m[6] === 0x7f && m[7] === kind && m[8] === devByte;
@@ -363,7 +363,7 @@ function check(raw, fileName) {
   }
   facts.seqHigh = seqHigh;
   if (seqHigh) add(G1, "warn", "Packet numbers above 16,383 are encoded wrongly (byte ≥ 0x80 inside SysEx)",
-    `${fmt(seqHigh)} packet(s) from #${fmt(firstSeqHigh)} carry the old unmasked sequence number instead of the 21-bit one the receivers read (Supermodel notes/212). Only the fast USB method (Elektron Transfer protocol) gets through. The STARTUP MENU over MIDI IN stalls on RECEIVING… (harmless, nothing is written), and a Web MIDI \"classic\" sender refuses it (\"Invalid MIDI message\"). Fix: download the re-wrapped file below (same container, OS and signature; only the packet numbering and checksums change), or use Supermodel's tools/rewrap_syx.py.`);
+    `${fmt(seqHigh)} packet(s) from #${fmt(firstSeqHigh)} carry the old unmasked sequence number instead of the 21-bit one the receivers read (Supermodel PR #116: https://github.com/AveyCole/Supermodel/pull/116). Only the fast USB method (Elektron Transfer protocol) gets through. The STARTUP MENU over MIDI IN stalls on RECEIVING… (harmless, nothing is written), and a Web MIDI \"classic\" sender refuses it (\"Invalid MIDI message\"). Fix: download the fixed .syx below (re-wrapped: same container, OS and signature; only the packet numbering and checksums change), or use Supermodel's tools/rewrap_syx.py.`);
   if (junk) add(G1, "warn", "Bytes outside SysEx messages", `${fmt(junk)} byte(s) between or after messages (ignored by most senders, but not expected).`);
   if (badLen || unterminated) return finish(result);
 
@@ -584,7 +584,7 @@ function check(raw, fileName) {
             facts.canFixKey = nOk === regs.length;
             add(G5, "warn", "Installed OS will NOT verify updates with the Model:Samples key",
               "The 32-byte key fix (0x401296b2) is missing. The OS boots, but Modded-Cycles' \"Model:Samples: back to its OS\" will be refused, and later USB updates need a Cycles-signed file."
-              + (facts.canFixKey ? " Not flashed yet: download the file with the key fix below instead (same OS, only those 32 bytes change, re-signed with the Samples key from this file's own bootstrap)." : "")
+              + (facts.canFixKey ? " Not flashed yet: download the fixed .syx below instead (same OS, only those 32 bytes change, re-signed with the Samples key from this file's own bootstrap)." : "")
               + " Already installed: to go back over USB, use the second way back (Model:Cycles → Samples OS); otherwise the STARTUP MENU over MIDI IN.");
             checks[checks.length - 1].link = { href: "#revert-unfixed", text: "Back to Samples OS: installed another way, without the key fix" };
           }
@@ -601,7 +601,7 @@ function check(raw, fileName) {
  *  - the STARTUP MENU (Samples bootstrap) listens on MIDI IN only, takes product 0x0F, checks with the Samples key. */
 function routes(f) {
   const smp = f.transport === "samples";
-  const usb = f.os === "cycles" ? "USB: the Install a Cycles OS tab, Elektron Transfer or any SysEx tool" : "USB: Elektron Transfer or the web flasher";
+  const usb = f.os === "cycles" ? "USB: the Install a Cycles OS tab or any SysEx tool" : "USB: a SysEx tool or the web flasher";
   const R = [];
   R.push({ where: "Model:Samples on its own Model:Samples OS", how: usb,
     ok: smp ? "yes" : "no",
@@ -616,7 +616,7 @@ function routes(f) {
     how: "MIDI IN through a MIDI interface (TRS or DIN with adapter). USB does not work in this menu.",
     ok: !smp || f.seqHigh ? "no" : "yes",
     why: !smp ? "Ignored: the STARTUP MENU only takes the Model:Samples transport (0x0F). Use the smp-os version."
-      : f.seqHigh ? "Not as it is: packets past sequence 16,383 carry a byte ≥ 0x80, and the transfer stalls on RECEIVING… (harmless, nothing is written). Use the re-wrapped file, which this route accepts."
+      : f.seqHigh ? "Not as it is: packets past sequence 16,383 carry a byte ≥ 0x80, and the transfer stalls on RECEIVING… (harmless, nothing is written). Use the fixed (re-wrapped) .syx, which this route accepts."
       : "The recovery path: always available, whatever OS is installed. Slow (minutes at MIDI speed)." });
   R.push({ where: "A Model:Cycles (any OS)", how: "—", ok: "no",
     why: smp ? "Do not send it. A real Model:Cycles on its own OS ignores it, but a Model:Cycles running the Samples OS would install it and then refuse Model:Cycles firmwares over USB."
@@ -649,7 +649,7 @@ function revertFile(result) {
   const f = result.facts;
   f.transport = "cycles";
   f.routes = [
-    { where: "Model:Samples on a Cycles OS WITHOUT the key fix (e.g. an elektron-firmware-tool cross-flash)", how: "USB: the \"Back to Samples OS\" tab, Elektron Transfer or the web flasher", ok: "yes",
+    { where: "Model:Samples on a Cycles OS WITHOUT the key fix (e.g. an elektron-firmware-tool cross-flash)", how: "USB: the \"Back to Samples OS\" tab, a SysEx tool or the web flasher", ok: "yes",
       why: "That OS checks with the Model:Cycles key, which signs this file. The machine restarts on the Model:Samples OS." },
     { where: "Model:Samples on a Cycles OS with the key fix", how: "USB", ok: "no", why: "Refused (\"Upgrade Failed\"), nothing written. Use the first way back: Model:Samples: back to its OS." },
     { where: "Model:Samples on its own OS, or from its STARTUP MENU", how: "USB / MIDI IN", ok: "no", why: "Ignored: wrong transport (0x11). Nothing to bring back on the Samples OS; the STARTUP MENU takes the official model-samples_OS1.13.syx." },
@@ -662,9 +662,9 @@ function revertFile(result) {
 }
 
 /* Re-wrap a .syx: same decoded stream, product and start sequence, packed with the 21-bit sequence number and the
- * receivers' packet checksum (Supermodel 3f4ce51, notes/212: rewrap()). Only the packet numbering and checksums of
- * packets past sequence 16,383 change; the container, OS and signature are untouched. Throws if the file cannot be
- * re-wrapped faithfully. */
+ * receivers' packet checksum (Supermodel PR #116, 3f4ce51: rewrap(); https://github.com/AveyCole/Supermodel/pull/116).
+ * Only the packet numbering and checksums of packets past sequence 16,383 change; the container, OS and signature are
+ * untouched. Throws if the file cannot be re-wrapped faithfully. */
 function pack7(b) {
   const out = [];
   for (let i = 0; i < b.length; i += 7) {

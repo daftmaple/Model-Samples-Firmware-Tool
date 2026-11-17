@@ -216,7 +216,7 @@ test("fixKey(): the cross-flash gets the key fix, checks safe, same OS as Modded
   const ref = S.check(B.cyclesForSamples(cyc, smp).raw, "ref.syx");
   assert.equal(r.facts.mainSha, ref.facts.mainSha, "installed OS = Modded-Cycles' stock Cycles OS for Model:Samples");
   assert.equal(route(r, STARTUP).ok, "yes");
-  assert.equal(find(S.check(eft, EFT), /will NOT verify/).detail.includes("download the file with the key fix"), true);
+  assert.equal(find(S.check(eft, EFT), /will NOT verify/).detail.includes("download the fixed .syx"), true);
 });
 
 test("fixKey(): only the 32 key bytes of the MAIN OS change, and sections 2, 4 and 5 stay byte-identical", (t) => {

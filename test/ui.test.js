@@ -131,19 +131,22 @@ test("an all-pass result says so without a list of issues", () => {
   assert.ok(box.byClass("gcard").every((c) => !c.open));
 });
 
-test("the re-wrap button appears only for the packet-numbering warning", () => {
+test("the fixed-file button appears for the packet-numbering warning", () => {
   const buttons = (r) => render(r).byClass("actions")[0].children.map((b) => b.textContent);
   assert.deepEqual(buttons(result()), ["Copy report", "Save report (.txt)"]);
   const r = result(); r.facts.seqHigh = 8;
-  assert.deepEqual(buttons(r), ["Download re-wrapped .syx", "Copy report", "Save report (.txt)"]);
+  assert.deepEqual(buttons(r), ["Download the fixed .syx", "Copy report", "Save report (.txt)"]);
   const f = result({ verdict: "fail" }); f.facts.seqHigh = 8;
   assert.equal(buttons(f)[0], "Copy report");
 });
 
-test("the key-fix button appears only for a fixable missing key fix", () => {
+test("the fixed-file button also covers a fixable missing key fix", () => {
   const first = (r) => render(r).byClass("actions")[0].children[0].textContent;
   const r = result(); r.facts.keyfix = false; r.facts.canFixKey = true;
-  assert.equal(first(r), "Download .syx with the key fix");
+  assert.equal(first(r), "Download the fixed .syx");
+  r.facts.seqHigh = 8;
+  assert.deepEqual(render(r).byClass("actions")[0].children.map((b) => b.textContent),
+    ["Download the fixed .syx", "Copy report", "Save report (.txt)"], "one button for both fixes");
   const n = result(); n.facts.keyfix = false; n.facts.canFixKey = false;
   assert.equal(first(n), "Copy report");
   const f = result({ verdict: "fail" }); f.facts.canFixKey = true;
@@ -178,7 +181,7 @@ test("install tab: same three steps as Back to Samples OS; one file per OS, sent
   const { firmware } = require("./helpers.js");
   const cyc = firmware("model-cycles_OS1.13.syx"), smp = firmware("model-samples_OS1.13.syx");
   if (!cyc || !smp) { t.skip("firmware/ lacks the official OS files"); return; }
-  const { I, ids, saved, location, window } = loadInstall();
+  const { I, ids, saved } = loadInstall();
   assert.equal(ids["in-files"].hidden, true, "files come after choosing the OS");
   assert.equal(ids["in-steps"].byClass("step").length, 0);
 
@@ -202,22 +205,16 @@ test("install tab: same three steps as Back to Samples OS; one file per OS, sent
   assert.equal(sendBtns[0].disabled, true, "no MIDI yet");
   const dlRow = () => ids["in-dl"].byClass("step")[0];
   assert.match(dlRow().textContent, /STARTUP MENU over MIDI IN/);
-  const [dl, ck] = dlRow().byClass("btns")[0].children;
-  assert.deepEqual([dl.textContent, ck.textContent], ["Download .syx", "Check it"]);
+  const [dl, ...more] = dlRow().byClass("btns")[0].children;
+  assert.equal(dl.textContent, "Download .syx");
+  assert.equal(more.length, 0, "no hand-off to the Check tab");
   dl.onclick();
   click(ids, "in-mode-cycles");
   assert.match(dlRow().textContent, /Not from the STARTUP MENU/);
   dlRow().byClass("btns")[0].children[0].onclick();
   assert.deepEqual(saved, ["model-cycles_OS1.13_for-samples_smp-os.syx", "model-cycles_OS1.13_for-samples_cyc-os.syx"]);
 
-  let shown = null;
-  window.SamplesCheck = { show: (name, raw) => { shown = { name, raw }; } };
-  dlRow().byClass("btns")[0].children[1].onclick();
-  assert.equal(location.hash, "#check");
-  assert.equal(shown.name, "model-cycles_OS1.13_for-samples_cyc-os.syx");
-  assert.equal(S.check(shown.raw).verdict, "safe");
-
-  await I.load("bad.syx", cyc.subarray(0, 4000));          // from the Check a file tab
+  await I.addFiles([file("bad.syx", cyc.subarray(0, 4000))]);
   assert.match(ids["in-log"].textContent, /bad\.syx: not packed\. /);
   assert.equal(dlRow().byClass("btns")[0].children[0].disabled, true);
 });
@@ -240,19 +237,10 @@ test("install tab: the machine that answers must run the OS chosen in step 1", (
   assert.match(step("samples").where, /STARTUP MENU/);
 });
 
-test("check result: “Install it on a Model:Samples” only for a Cycles OS, and it opens the install tab with the file", () => {
-  const calls = [], location = { hash: "" }, window = { SamplesInstall: { load: (n, raw) => calls.push(n) } };
-  const r2 = loadRender(window, location);
-  const btn = (box) => box.byClass("primary").find((b) => /Install it/.test(b.textContent));
-
-  assert.equal(btn(r2(result({ verdict: "safe", raw: new Uint8Array(1) }))), undefined, "not for the Samples OS");
-  const cycBox = r2(result({ verdict: "critical", raw: new Uint8Array(1), facts: { ...result().facts, routes: undefined, cyclesContainer: true, fileName: "mods.syx" } }));
-  btn(cycBox).onclick();
-  assert.deepEqual(calls, ["mods.syx"]);
-  assert.equal(location.hash, "#install");
-  btn(r2(result({ verdict: "safe", raw: new Uint8Array(1), facts: { ...result().facts, os: "cycles", transport: "cycles" } }))).onclick();
-  assert.equal(location.hash, "#install-cycles");
-  assert.equal(typeof window.SamplesCheck.show, "function");
+test("check result: no button hands the file to another tab", () => {
+  const r = result({ verdict: "safe", raw: new Uint8Array(1), facts: { ...result().facts, os: "cycles", transport: "cycles", cyclesContainer: true } });
+  const labels = render(r).byClass("actions")[0].children.map((b) => b.textContent);
+  assert.deepEqual(labels, ["Copy report", "Save report (.txt)"]);
 });
 
 test("install tab: the machine's answer is compared with the OS chosen in step 1", () => {
@@ -295,4 +283,62 @@ test("back tab: two ways, the files each needs, and the Model:Samples box for th
   R.usb.dev = { state: "ok", product: 0x0f, name: "x" };
   assert.match(R.devProblem(R.steps()[0]), /nothing to bring back/);
   assert.equal(R.devProblem(R.steps()[1]), null);
+});
+
+// ---- Files never carry over between tabs ---------------------------------------------------------------------------
+test("install tab: reset() forgets the files, the choice and the log, but not while sending", async (t) => {
+  const smp = require("./helpers.js").firmware("model-samples_OS1.13.syx");
+  if (!smp) { t.skip("firmware/ lacks model-samples_OS1.13.syx"); return; }
+  const { I, ids } = loadInstall();
+  click(ids, "in-mode-samples");
+  await I.addFiles([file("model-samples_OS1.13.syx", smp)]);
+  assert.ok(I.state.smp);
+  I.usb.sending = "smp";
+  assert.equal(I.reset(), false);
+  assert.ok(I.state.smp, "kept while sending");
+  I.usb.sending = false;
+  assert.equal(I.reset(), true);
+  assert.deepEqual([I.state.mode, I.state.smp, I.state.mod, I.state.log.length], [null, null, null, 0]);
+  assert.equal(ids["in-files"].hidden, true);
+  assert.equal(ids["in-log"].textContent, "");
+});
+
+test("back tab: reset() forgets the files, the choice and the Model:Samples box", () => {
+  const { ids, window } = loadTab("revert.js", { MCBuilder: { hex: S.hex, sha256: S.sha256 } });
+  const R = window.SamplesRevert;
+  click(ids, "rv-mode-unfixed");
+  R.state.official.samples = new Uint8Array(1);
+  ids["rv-is-samples"].checked = true;
+  assert.equal(R.reset(), true);
+  assert.deepEqual([R.state.mode, R.state.official.samples, ids["rv-is-samples"].checked], [null, null, false]);
+  assert.equal(ids["rv-files"].hidden, true);
+});
+
+test("check tab: reset() clears the results", () => {
+  const ids = {};
+  const env = { window: { SamplesSanity: S, addEventListener() {} }, document: fakeDocument(ids), navigator: {},
+    location: { hash: "" }, URL: {}, Blob: function () {}, setTimeout: () => {} };
+  const C = run(["ui.js", "check.js"], env).SamplesCheck;
+  ids.out = new Node("div"); ids.out.append(new Node("section"));
+  C.reset();
+  assert.equal(ids.out.children.length, 0);
+});
+
+test("app: leaving a tab resets it; staying on it (another hash in the same view) does not", () => {
+  const ids = {}, calls = [], location = { hash: "#install" }, handlers = {};
+  const tabs = ["start", "install", "revert", "check", "help"].map((v) => { const n = new Node("button"); n.dataset.tab = v; return n; });
+  const document = fakeDocument(ids, { querySelectorAll: () => tabs });
+  const window = { addEventListener: (t, f) => { handlers[t] = f; }, scrollTo() {},
+    SamplesInstall: { reset: () => calls.push("install") }, SamplesCheck: { reset: () => calls.push("check") } };
+  const env = { window, document, navigator: {}, location, URL: {}, Blob: function () {}, setTimeout: () => {} };
+  new Function(...PARAMS, "history", fs.readFileSync(path.join(SITE, "app.js"), "utf8"))(...PARAMS.map((k) => env[k]),
+    { pushState: (_, __, h) => { location.hash = h; } });
+  assert.equal(ids["tab-install"].hidden, false);
+  location.hash = "#install-samples"; handlers.hashchange();
+  assert.deepEqual(calls, [], "same view");
+  tabs[3].onclick();
+  assert.deepEqual(calls, ["install"]);
+  assert.equal(ids["tab-check"].hidden, false);
+  location.hash = "#help-recovery"; handlers.hashchange();
+  assert.deepEqual(calls, ["install", "check"]);
 });

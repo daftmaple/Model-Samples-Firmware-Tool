@@ -149,6 +149,16 @@ function render() {
   UI.renderLog($("rv-log"), st.log);
 }
 
+/* Leaving the tab: forget the files, the choice, the Model:Samples box and the log (not the USB connection).
+ * Not while sending. */
+function reset() {
+  if (usb.sending) return false;
+  Object.assign(st, { mode: null, official: { samples: null, cycles: null }, log: [] });
+  $("rv-is-samples").checked = false;
+  render();
+  return true;
+}
+
 function init() {
   if (!B || !S || !usb || !$("rv-drop")) return;
   usb.init();
@@ -166,6 +176,6 @@ function init() {
   render();
 }
 
-window.SamplesRevert = { state: st, usb, steps, devProblem, init, render };
+window.SamplesRevert = { state: st, usb, steps, devProblem, init, render, reset };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
