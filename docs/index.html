@@ -11,7 +11,7 @@
 <main>
   <h1>Model:Samples Firmware Tool <span class="beta">Beta</span></h1>
   <details class="beta-note">
-    <summary><strong>Beta: still under testing.</strong> Keep the <a href="#help-recovery">recovery route</a> at hand.</summary>
+    <summary><strong>Beta: still under testing.</strong> Keep the <a href="#help-recovery" target="_blank" rel="noopener">recovery route</a> at hand.</summary>
     <p>The checks are verified against real files and the official firmware. The "Back to Samples OS" tab has only been tested against a simulated device, not yet on a real Model:Samples. Files from the "Install a Cycles OS" tab are byte-identical to Modded-Cycles' own builds, but have not been sent from this page to a real machine yet.</p>
   </details>
 
@@ -55,7 +55,7 @@
       <h3>What you need</h3>
       <ul>
         <li><strong>A backup.</strong> Save your projects and samples with Elektron Transfer first.</li>
-        <li><strong>Chrome, Edge or Opera on a computer</strong>, to send files over USB (Web MIDI). In other browsers you can still build and download the files, then send them with a SysEx tool.</li>
+        <li><strong>Chrome, Edge or Opera on a computer</strong>, to send files over USB (Web MIDI). In other browsers you can still build and download the files, then send them with a <a href="#help-sysex">SysEx tool</a>.</li>
         <li><strong>A USB cable</strong>, and Elektron Transfer and Overbridge closed while this page sends.</li>
         <li><strong>The official OS 1.13 files</strong> from <a href="https://www.elektron.se/" rel="noopener">elektron.se</a> (Support &amp; Downloads): <span class="mono">model-samples_OS1.13.syx</span>, and for one of the ways back also <span class="mono">model-cycles_OS1.13.syx</span>. The page recognises them by their fingerprint.</li>
       </ul>
@@ -82,7 +82,7 @@
           <span>Installed with Modded-Cycles, a derivative or this page, and you want to change mods. Transfer shows it as Model:Cycles.</span>
         </button>
       </div>
-      <p class="hint">Installed another way, for example with elektron-firmware-tool? <a href="#revert-unfixed">Go back to the Samples OS first</a>, then come back here. Flashing from the STARTUP MENU over MIDI IN instead of USB? Pick “Its own Model:Samples OS”. <a href="#help-which">Not sure which you have?</a> Connecting in step 3 also tells you.</p>
+      <p class="hint">Installed another way, for example with elektron-firmware-tool? <a href="#revert-unfixed">Go back to the Samples OS first</a>, then come back here. Flashing from the STARTUP MENU over MIDI IN instead of USB? Pick “Its own Model:Samples OS”. <a href="#help-which" target="_blank" rel="noopener">Not sure which you have?</a> Connecting in step 3 also tells you.</p>
 
       <div id="in-files" hidden>
         <h2 class="step-h" id="in-h-files">Add your files</h2>
@@ -108,10 +108,10 @@
       </div>
 
       <div id="in-download" hidden>
-        <h2 class="step-h step-alt" id="in-h-download">Or download it for a SysEx tool</h2>
+        <h2 class="step-h step-alt" id="in-h-download">Or download it for a <a href="#help-sysex" target="_blank" rel="noopener">SysEx tool</a></h2>
         <p class="hint">No Web MIDI here, or you prefer your own tool? Download the packed file and send it yourself.</p>
         <div id="in-dl"></div>
-        <p class="note-recovery"><strong>Recovering a machine that does not start?</strong> You do not need this file: from the STARTUP MENU, send the official <span class="mono">model-samples_OS1.13.syx</span> directly. See <a href="#help-recovery">recovery</a>.</p>
+        <p class="note-recovery"><strong>Recovering a machine that does not start?</strong> You do not need this file: from the STARTUP MENU, send the official <span class="mono">model-samples_OS1.13.syx</span> directly. See <a href="#help-recovery" target="_blank" rel="noopener">recovery</a>.</p>
       </div>
 
       <div id="in-activity">
@@ -123,7 +123,7 @@
     <details class="about">
       <summary>What is checked, and what is not</summary>
       <p>A file built for a real Model:Cycles must be Elektron's Model:Cycles OS 1.13 in everything but the OS: header, section table, bootstrap, updater and meta match Elektron's fingerprints, and its signature checks with the Model:Cycles key (derived from its own bootstrap, so the official Model:Cycles OS is not needed). The OS's update-check code must be intact, so the key fix applies safely. Only the OS is carried over, and only its 32 key bytes change, signed with the Model:Samples key. A file already packed for the Model:Samples is kept as it is, with the key fix added if it lacks it. The result must then pass every check of the <a href="#check">Check a file</a> tab.</p>
-      <p>What the page cannot check is whether each mod works on a Model:Samples. Both machines run the same hardware and Modded-Cycles builds the same mods for both. If an OS ever fails to start, the <a href="#help-recovery">STARTUP MENU</a> brings the machine back.</p>
+      <p>What the page cannot check is whether each mod works on a Model:Samples. Both machines run the same hardware and Modded-Cycles builds the same mods for both. If an OS ever fails to start, the <a href="#help-recovery" target="_blank" rel="noopener">STARTUP MENU</a> brings the machine back.</p>
     </details>
 
     <aside class="credit">
@@ -160,7 +160,7 @@
           <span>One step, plus an optional clean-up. Needs both official OS files.</span>
         </button>
       </div>
-      <p class="hint"><a href="#help-which">Not sure?</a> Trying the first way is harmless: an OS that does not take it says “Upgrade Failed” and nothing changes.</p>
+      <p class="hint"><a href="#help-which" target="_blank" rel="noopener">Not sure?</a> Trying the first way is harmless: an OS that does not take it says “Upgrade Failed” and nothing changes.</p>
 
       <div id="rv-files" hidden>
         <h2 class="step-h" id="rv-h-files">Add the official OS files</h2>
@@ -178,7 +178,10 @@
         <div id="rv-steps"></div>
         <div class="progress" id="rv-progress" role="progressbar" aria-label="Sending" aria-valuemin="0" aria-valuemax="100" hidden><span></span></div>
         <ul class="log" id="rv-log" aria-live="polite"></ul>
-        <p class="hint">Without USB here: send the downloaded file with a SysEx tool. If nothing works over USB, use the <a href="#help-recovery">STARTUP MENU</a>.</p>
+        <ul class="hint">
+          <li><strong>This browser cannot send?</strong> (no Web MIDI) Download the file and send it over USB with a <a href="#help-sysex" target="_blank" rel="noopener">SysEx tool</a>.</li>
+          <li><strong>The machine refuses every file, or does not start?</strong> Use the <a href="#help-recovery" target="_blank" rel="noopener">STARTUP MENU</a> over MIDI IN, which always works.</li>
+        </ul>
       </div>
     </div>
 
@@ -227,8 +230,23 @@
         <li>Connect a MIDI interface to the Model:Samples' <strong>MIDI IN</strong> (USB does not work in this menu).</li>
         <li>Hold <kbd>FUNC</kbd> while switching the machine on.</li>
         <li>Press <kbd>TRIG 4</kbd> (OS UPGRADE).</li>
-        <li>Send the official <span class="mono">model-samples_OS1.13.syx</span> with a SysEx tool. An <span class="mono">smp-os</span> file from the Install tab works too; a <span class="mono">cyc-os</span> file does not. It is slow: a few minutes at MIDI speed.</li>
+        <li>Send the official <span class="mono">model-samples_OS1.13.syx</span> with a <a href="#help-sysex">SysEx tool</a>. An <span class="mono">smp-os</span> file from the Install tab works too; a <span class="mono">cyc-os</span> file does not. It is slow: a few minutes at MIDI speed.</li>
       </ol>
+    </div>
+
+    <div class="panel" id="help-sysex">
+      <h2>Sending a file with a SysEx tool</h2>
+      <p>A SysEx tool sends a <span class="mono">.syx</span> file to a MIDI port as it is. Use one when this page cannot send (no Web MIDI), or for the STARTUP MENU. For example:</p>
+      <ul>
+        <li><strong>Elektron C6</strong> (Windows, macOS): Elektron's own free SysEx utility, from <a href="https://www.elektron.se/" rel="noopener">elektron.se</a>.</li>
+        <li><strong>SysEx Librarian</strong> (macOS) or <strong>MIDI-OX</strong> (Windows): free, general-purpose.</li>
+      </ul>
+      <ol class="big">
+        <li>Close Elektron Transfer, Overbridge and other music software, so the port is free.</li>
+        <li>Pick the port: the Model:Samples' own USB port, or, for the STARTUP MENU, the MIDI interface wired to its <strong>MIDI IN</strong>.</li>
+        <li>Open the <span class="mono">.syx</span> and send it. Confirm on the machine if it asks, and do not switch it off while it writes and restarts.</li>
+      </ol>
+      <p>Which file goes where: an <span class="mono">smp-os</span> file or the official <span class="mono">model-samples_OS1.13.syx</span> goes to a Model:Samples on its own OS over USB, or to the STARTUP MENU over MIDI IN. A <span class="mono">cyc-os</span> file goes only over USB, while a Cycles OS with the key fix runs. A file with the old packet numbering (Check a file warns about it) does not get through a SysEx tool: use its “Download the fixed .syx” first. Over MIDI IN, a whole OS takes a few minutes.</p>
     </div>
 
     <div class="panel" id="help-which">
@@ -249,6 +267,8 @@
         <dd>A 32-byte change to a Cycles OS (from Modded-Cycles) that lets it accept updates signed for the Model:Samples. Without it, the only way back over USB is the two-file one, or the STARTUP MENU.</dd>
         <dt>smp-os / cyc-os</dt>
         <dd>The same packed OS in two wrappings. <span class="mono">smp-os</span> is for a machine on its own Model:Samples OS, or the STARTUP MENU. <span class="mono">cyc-os</span> is for a machine already on a Cycles OS with the key fix, over USB.</dd>
+        <dt>SysEx tool</dt>
+        <dd>A program that sends a <span class="mono">.syx</span> file to a MIDI port as it is, for example Elektron C6. See <a href="#help-sysex">sending a file with a SysEx tool</a>.</dd>
         <dt>STARTUP MENU</dt>
         <dd>Elektron's recovery menu (FUNC + power on). It takes only Model:Samples files, over MIDI IN. See <a href="#help-recovery">recovery</a>.</dd>
         <dt>Web MIDI</dt>

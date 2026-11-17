@@ -14,7 +14,9 @@ A static page for a Model:Samples running a custom (Model:Cycles-based) OS.
    and send over USB, or download the file for a SysEx tool.
 
 If something goes wrong, the **Help & recovery** view has the STARTUP MENU steps (FUNC + power on, TRIG 4, the official
-`model-samples_OS1.13.syx` to MIDI IN). It also explains which OS a machine runs and the terms used on the page.
+`model-samples_OS1.13.syx` to MIDI IN). It also explains how to send a file with a SysEx tool (for example Elektron
+C6), which OS a machine runs, and the terms used on the page. Help links inside a tab open in a new browser tab, so
+the tab keeps its files.
 
 ## The tabs
 
