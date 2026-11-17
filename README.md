@@ -20,7 +20,7 @@ the tab keeps its files.
 
 ## The tabs
 
-**Check a file.** Checks a `.syx` before you flash it: only the MAIN OS (section 3) may differ from Elektron's official
+**Check a file.** Checks a `.syx` before you flash it on a Model:Samples (not on a real Model:Cycles): only the MAIN OS (section 3) may differ from Elektron's official
 Model:Samples OS 1.13 container, and nothing the recovery path (bootstrap / STARTUP MENU) depends on may be touched.
 Each report says where and when the file can be flashed and what the device can accept afterwards.
 Two warnings come with a corrected file, from one "Download the fixed .syx" button, checked again before it is offered
