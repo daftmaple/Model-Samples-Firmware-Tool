@@ -55,10 +55,22 @@ function stepState(id, state) {
 /* One file to download for a SysEx tool: its name, where it can be sent, a status line and a Download button.
  * warn: { title, text, button } for a file that may be flashed in one case only: a warning box, and a warning-coloured
  * button that names the case. own: the user's own file, unchanged: nothing to download, the button stays disabled. */
-function downloadRow({ name, where, meta, ready, onDownload, warn, own }) {
+function downloadRow({ name, where, meta, ready, onDownload, warn, own, caution }) {
   const r = el("div", "step" + (ready ? "" : " off") + (warn ? " step-warn" : ""));
   r.append(el("h4", "mono", name));
   r.append(el("p", "sub", where));
+  if (caution) {                                   // a highlighted "not for this route" box, with a button to the right file
+    const c = el("div", "caution");
+    c.append(el("strong", "", caution.title + " "), caution.text);
+    if (caution.action) {
+      const b = el("button", null, caution.action.label);
+      b.onclick = caution.action.onclick;
+      const row = el("div", "btns");
+      row.append(b);
+      c.append(row);
+    }
+    r.append(c);
+  }
   if (warn) {
     const w = el("p", "warn-box");
     w.append(el("strong", "", warn.title + " "), warn.text);

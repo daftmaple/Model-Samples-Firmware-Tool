@@ -152,6 +152,9 @@ button.warn:hover { border-color: var(--warn); filter: brightness(1.05); }
 .step.step-warn { border-color: var(--warn); border-left-width: 3px; }
 .step .warn-box { margin: 4px 0 10px; padding: 8px 12px; background: var(--warn-bg); border-left: 3px solid var(--warn); border-radius: 6px; font-size: 14px; }
 .step .warn-box strong { color: var(--warn); }
+.step .caution { margin: 4px 0 10px; padding: 8px 12px; background: var(--warn-bg); border-left: 3px solid var(--warn); border-radius: 6px; font-size: 14px; }
+.step .caution strong { color: var(--warn); }
+.step .caution .btns { margin-top: 8px; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 .progress { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0; }
 .progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }

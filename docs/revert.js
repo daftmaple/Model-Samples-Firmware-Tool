@@ -27,13 +27,18 @@ const DEV = { 0x11: "Model:Cycles", 0x0f: "Model:Samples" };
 const st = { mode: null, official: { samples: null, cycles: null }, log: [] };
 const hexSha = (raw) => B.hex(B.sha256(raw));
 
+/* Under each download: the STARTUP MENU ignores these files; the official one goes there as it is. */
+const MENU_CAUTION = { title: "Flashing from the STARTUP MENU?",
+  text: "Not this file: the STARTUP MENU ignores it. Send the official model-samples_OS1.13.syx there, unchanged: it brings back the Samples OS whatever OS is installed." };
+
 // ---- steps for the chosen way back ----------------------------------------------------------------
 function steps() {
   const smp = st.official.samples, cyc = st.official.cycles;
   if (st.mode === "fixed") {
     return [{ id: "back", title: "Send the official Model:Samples OS, packed for the Cycles OS",
       sub: "Modded-Cycles “Model:Samples: back to its OS”. The machine answers as a Model:Cycles and restarts as a Model:Samples.",
-      where: "Send it with a SysEx tool over USB, while the Cycles OS with the key fix runs. Not from the STARTUP MENU.",
+      where: "Send it with a SysEx tool over USB, while the Cycles OS with the key fix runs.",
+      caution: MENU_CAUTION,
       needs: ["samples"], product: 0x11, name: "model-samples_OS1.13_back-from-cycles-os.syx",
       build: () => {
         const s = B.unwrap(smp);
@@ -46,7 +51,8 @@ function steps() {
     return [
       { id: "tocyc", title: "First: Model:Cycles → Samples OS",
         sub: "The Samples OS in the Model:Cycles container, signed with the Cycles key: the only thing a Cycles OS without the key fix accepts. The machine answers as a Model:Cycles and restarts as a Model:Samples.",
-        where: "Send it with a SysEx tool over USB, while the Cycles OS without the key fix runs. Not from the STARTUP MENU. Only to a Model:Samples: a real Model:Cycles would also take it and switch to the Samples OS.",
+        where: "Send it with a SysEx tool over USB, while the Cycles OS without the key fix runs. Only to a Model:Samples: a real Model:Cycles would also take it and switch to the Samples OS.",
+        caution: MENU_CAUTION,
         needs: ["cycles", "samples"], product: 0x11, name: "model-samples_OS1.13_for-model-cycles.syx", confirmSamples: true,
         warn: { title: "One case only.",
           text: "Flash this file only on a Model:Samples that runs a Cycles OS without the key fix. A Cycles OS with the key fix refuses it, the Samples OS and the STARTUP MENU ignore it, and a real Model:Cycles would take it and switch to the Samples OS. Check a file flags it for that reason: it is a Model:Cycles container, on purpose. Prefer “Send over USB” above: it asks the machine which OS it runs before sending, and waits for the Model:Samples box to be ticked.",
@@ -150,7 +156,7 @@ function render() {
       send: () => send(s),
       connectHint: "Connect above to send it over USB.",
     }));
-    dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s), warn: s.warn, own: s.own,
+    dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s), warn: s.warn, own: s.own, caution: s.caution,
       meta: ready ? "" : "Add the official file(s) in step 2 first." }));
   }
 

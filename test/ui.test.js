@@ -189,14 +189,25 @@ test("install tab: same three steps as Back to Samples OS; one file per OS, sent
   assert.equal(dl.textContent, "Download .syx");
   assert.equal(more.length, 0, "no hand-off to the Check tab");
   dl.onclick();
+  assert.equal(dlRow().byClass("caution").length, 0, "the smp-os file is the STARTUP MENU one");
   click(ids, "in-mode-cycles");
-  assert.match(dlRow().textContent, /Not from the STARTUP MENU/);
-  dlRow().byClass("btns")[0].children[0].onclick();
+  const caution = dlRow().byClass("caution")[0];
+  assert.match(caution.textContent, /Flashing from the STARTUP MENU\? Not this file/);
+  assert.match(caution.textContent, /Its own Model:Samples OS/);
+  const dlBtns = () => dlRow().byClass("btns").at(-1).children;
+  dlBtns()[0].onclick();
   assert.deepEqual(saved, ["model-cycles_OS1.13_for-samples_smp-os.syx", "model-cycles_OS1.13_for-samples_cyc-os.syx"]);
+  const sw = caution.byClass("btns")[0].children[0];
+  assert.equal(sw.textContent, "Switch to the smp-os file");
+  sw.onclick();
+  assert.equal(I.state.mode, "samples");
+  assert.match(dlRow().textContent, /smp-os\.syx/);
+  assert.equal(dlRow().byClass("caution").length, 0);
+  click(ids, "in-mode-cycles");
 
   await I.addFiles([file("bad.syx", cyc.subarray(0, 4000))]);
   assert.match(ids["in-log"].textContent, /bad\.syx: not packed\. /);
-  assert.equal(dlRow().byClass("btns")[0].children[0].disabled, true);
+  assert.equal(dlBtns()[0].disabled, true);
 });
 
 test("install tab: a Model:Cycles build waits for the official file; a packed file needs only itself", async (t) => {
@@ -301,9 +312,12 @@ test("back tab: two ways, the files each needs, and the Model:Samples box for th
   assert.equal(plainBtn.textContent, "No download needed: it is your own file");
   assert.equal(plainBtn.disabled, true, "the official file is the user's own: nothing to download");
   assert.equal(rows[1].byClass("warn-box").length, 0);
+  assert.match(rows[0].byClass("caution")[0].textContent, /Flashing from the STARTUP MENU\? Not this file.*official model-samples_OS1\.13\.syx/);
+  assert.equal(rows[1].byClass("caution").length, 0, "the official file is the STARTUP MENU one");
   click(ids, "rv-mode-fixed");
   const back = ids["rv-dl"].byClass("step")[0];
   assert.equal(back.byClass("warn-box").length, 0, "the first way's file needs no warning");
+  assert.match(back.byClass("caution")[0].textContent, /Flashing from the STARTUP MENU\? Not this file/);
   assert.equal(back.byClass("btns")[0].children[0].className, "primary");
   assert.equal(back.byClass("btns")[0].children[0].textContent, "Download .syx", "the first way's file is built here");
   click(ids, "rv-mode-unfixed");

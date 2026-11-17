@@ -206,7 +206,7 @@ function checkTab(I, ids, files, seq, want, mode) {
   assert.equal(ids["in-need-note"].hidden, !notNeeded, `${label}: "not needed" note`);
   assert.equal(/model-samples_OS1\.13\.syx/.test(need), !notNeeded, `${label}: official file listed`);
   const key = mode === "samples" ? "smp" : "cyc";
-  ids["in-dl"].byClass("step")[0].byClass("btns")[0].children[0].onclick();
+  ids["in-dl"].byClass("step")[0].byClass("btns").at(-1).children[0].onclick();   // the Download button, after any caution box
   const got = files[files.length - 1];
   assert.equal(got.name, `${I.baseName(want.mod.name)}_for-samples_${key}-os.syx`, label);
   assert.ok(same(got.bytes, want.a.r[key]), `${label}: downloaded bytes`);

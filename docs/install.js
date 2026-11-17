@@ -39,7 +39,10 @@ const STEPS = {
     title: "Your mods, for a Model:Samples already on a Cycles OS (cyc-os)",
     sub: "Replaces the Cycles OS it runs now with this one. The machine restarts on the new Cycles OS.",
     note: "Over USB only, while the Cycles OS runs. The STARTUP MENU ignores this file: for that route, pick “Its own Model:Samples OS” in step 1 and use the smp-os file.",
-    where: "Send it with a SysEx tool over USB, while the Cycles OS runs. Not from the STARTUP MENU: it ignores this file (use the smp-os file there).",
+    where: "Send it with a SysEx tool over USB, while the Cycles OS runs.",
+    caution: { title: "Flashing from the STARTUP MENU?",
+      text: "Not this file: the STARTUP MENU ignores it. Pick “Its own Model:Samples OS” in step 1 and download the smp-os file instead.",
+      label: "Switch to the smp-os file" },
     refused: "If it says “Upgrade Failed”, its Cycles OS has no key fix (or it is a real Model:Cycles), and nothing is written: go back to the Samples OS first (Back to Samples OS tab, second way), or use the STARTUP MENU with the smp-os file." },
 };
 function steps() {
@@ -160,6 +163,7 @@ function render() {
       connectHint: "Connect above to send it over USB.",
     }));
     dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s),
+      caution: s.caution && { title: s.caution.title, text: s.caution.text, action: { label: s.caution.label, onclick: () => choose("samples") } },
       meta: st.busy ? "Packing and checking…" : ready ? kb(st.result[s.key].length) : st.error ? "Not packed: see Activity below." : waiting() }));
   }
 
