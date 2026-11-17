@@ -102,11 +102,12 @@ test("rewrap() leaves the official file byte-identical", (t) => {
   assert.deepEqual(S.rewrap(raw), raw);
 });
 
-test("every file in firmware/ gets a verdict, and safe/warn ones get routes", () => {
+test("every file in firmware/ gets a verdict, and safe/warn/one-case ones get routes", () => {
   for (const f of firmwareFiles()) {
     const r = S.check(firmware(f), f);
-    assert.ok(["safe", "warn", "fail", "critical"].includes(r.verdict), f);
-    assert.equal(!!r.facts.routes, r.verdict === "safe" || r.verdict === "warn", f);
+    assert.ok(["safe", "warn", "onecase", "fail", "critical"].includes(r.verdict), f);
+    assert.equal(r.verdict === "onecase", S.hex(S.sha256(firmware(f))) === S.REF.samplesOnCyclesSyx, `${f}: one-case verdict only for the way-back file`);
+    assert.equal(!!r.facts.routes, ["safe", "warn", "onecase"].includes(r.verdict), f);
     assert.ok(r.checks.length > 0, f);
   }
 });
@@ -123,15 +124,43 @@ test("way back A (Model:Samples: back to its OS): reference build, checked safe 
   assert.match(r.facts.known, /return file/);
 });
 
-test("way back B (Model:Cycles → Samples OS): reference build, recognised as a one-case file", (t) => {
+test("way back B (Model:Cycles → Samples OS): reference build, full check, a verdict of its own", (t) => {
   const files = need(t, CYC, SMP); if (!files) return;
   const raw = B.crossflash(files[0], files[1]).raw;
   assert.equal(S.hex(S.sha256(raw)), S.REF.samplesOnCyclesSyx);
   const r = S.check(raw, "tocyc.syx");
-  assert.equal(r.verdict, "warn");
-  assert.deepEqual([...new Set(r.checks.map((c) => c.group))], ["Recognised file"]);
+  assert.equal(r.verdict, "onecase");
+  assert.deepEqual([...new Set(r.checks.map((c) => c.group))], ["Recognised file", "Model:Cycles container (what this file must be)",
+    "SysEx transport", "Container", "Protected sections (must be Elektron's)", "Signature", "MAIN OS (section 3)"], "the full check runs too");
+  // What the full Model:Samples check flags is kept, marked expected, and nothing else is wrong
+  const expected = r.checks.filter((c) => c.status === "expected").map((c) => `${c.was}: ${c.title}`);
+  assert.deepEqual(expected, ["critical: This is a Model:Cycles container, not a Model:Samples one",
+    "critical: Section table differs from the official Model:Samples OS", "fail: Section 5 meta MODIFIED",
+    "critical: Section 2 bootstrap MODIFIED", "skip: Signature not checked against the Samples key"]);
+  assert.ok(r.checks.filter((c) => c.status === "expected").every((c) => /Expected here/.test(c.detail) && !c.link));
+  assert.deepEqual(r.checks.filter((c) => !["pass", "info", "expected"].includes(c.status)).map((c) => c.title),
+    ["One case only: a Model:Samples that runs a Cycles OS WITHOUT the key fix"]);
+  assert.ok(r.checks.some((c) => c.title === "MAIN OS = official Model:Samples OS 1.13"));
+  assert.deepEqual(r.checks.filter((c) => c.group.startsWith("Model:Cycles container")).map((c) => c.status), ["pass", "pass", "pass", "pass"]);
+  assert.match(S.report(r), /Verdict: ONE CASE ONLY/);
   assert.equal(r.facts.routes.filter((x) => x.ok === "yes").length, 1);
   assert.match(r.facts.routes[0].where, /WITHOUT the key fix/);
+  const w = r.checks.find((c) => c.status === "warn");
+  assert.match(w.title, /One case only.*WITHOUT the key fix/);
+  assert.match(w.detail, /refuses it.*ignore it.*real Model:Cycles/);
+  assert.equal(w.link.href, "#revert-unfixed", "points to the Back tab's USB send");
+  assert.match(S.report(r), /→ Back to Samples OS: send it over USB/);
+});
+
+test("only the exact way-back file gets the one-case verdict: one changed byte gets the full check's verdict", (t) => {
+  const files = need(t, CYC, SMP); if (!files) return;
+  const raw = B.crossflash(files[0], files[1]).raw;
+  const off = raw.length - 100;                                          // inside the last packet's payload
+  const other = Uint8Array.from(raw); other[off] ^= 1;
+  const r = S.check(other, "changed.syx");
+  assert.notEqual(r.verdict, "onecase");
+  assert.ok(["fail", "critical"].includes(r.verdict), r.verdict);
+  assert.ok(!r.checks.some((c) => c.status === "expected"));
 });
 
 // ---- Tampered copies of the official Model:Samples OS ------------------------------------------------------------

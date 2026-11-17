@@ -271,16 +271,22 @@ function deriveKey(text, konst) {
 // ===========================================================================
 /* Status of one check: pass, info, warn, fail (refused / won't boot, recoverable),
  * critical (touches what the recovery path depends on: brick risk). */
-const RANK = { pass: 0, info: 0, skip: 0, warn: 1, fail: 2, critical: 3 };
+const RANK = { pass: 0, info: 0, skip: 0, expected: 0, warn: 1, fail: 2, critical: 3 };
 
+/* The check of a .syx for a Model:Samples. The "Model:Cycles → Samples OS" way-back file gets the same full check,
+ * then its own verdict (oneCaseFile). */
 function check(raw, fileName) {
+  const result = fullCheck(raw, fileName);
+  return result.facts.sha256 === REF.samplesOnCyclesSyx ? oneCaseFile(result, raw) : result;
+}
+
+function fullCheck(raw, fileName) {
   raw = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
   const checks = [];
   const add = (group, status, title, detail) => { checks.push({ group, status, title, detail: detail || "" }); return status; };
   const facts = { fileName: fileName || "", size: raw.length, sha256: hex(sha256(raw)) };
   facts.known = REF.known[facts.sha256] || null;
   const result = { checks, facts };
-  if (facts.sha256 === REF.samplesOnCyclesSyx) return revertFile(result);
 
   const G1 = "SysEx transport", G2 = "Container", G3 = "Protected sections (must be Elektron's)",
         G4 = "Signature", G5 = "MAIN OS (section 3)";
@@ -636,16 +642,46 @@ function afterwards(f) {
   return { now: "An OS this page does not recognise.", next: "Its USB update path is unknown. The STARTUP MENU over MIDI IN with the official model-samples_OS1.13.syx is the way back." };
 }
 
-/* Modded-Cycles' exact "Model:Cycles → Samples OS" file (crossflash --to cycles, its reference SHA-256): not a custom
- * OS for a Model:Samples, but a way back for one that runs a Cycles OS without the key fix (notes/41 §6, §8). */
-function revertFile(result) {
+/* Modded-Cycles' exact "Model:Cycles → Samples OS" file (crossflash --to cycles, its reference SHA-256), also what the
+ * Back to Samples OS tab builds: not a custom OS for a Model:Samples, but a way back for one that runs a Cycles OS
+ * without the key fix (notes/41 §6, §8). The full Model:Samples check flags its Model:Cycles container: those findings
+ * stay listed, marked "expected", next to proof that the container is Elektron's Model:Cycles one, under a verdict of
+ * its own ("onecase"). */
+function oneCaseFile(result, raw) {
+  const WHY = "Expected here: this file is a Model:Cycles container on purpose, so a Model:Samples check flags it. See \"Model:Cycles container\" below.";
+  for (const c of result.checks)
+    if (RANK[c.status] >= RANK.fail || c.status === "skip") {
+      c.was = c.status; c.status = "expected"; delete c.link;              // no "pack it for the Model:Samples" here
+      c.detail = (c.detail ? c.detail + " " : "") + WHY;
+    }
+
+  // What this file must be instead: Elektron's Model:Cycles container, signed with the Model:Cycles key
+  const GC = "Model:Cycles container (what this file must be)", own = [];
+  const add = (ok, title, detail) => own.push({ group: GC, status: ok ? "pass" : "critical", title, detail: detail || "" });
+  try {
+    const B = builder(), c = B.parseContainer(decode(raw).stream);
+    const stored = (id) => { const x = c.sections.find((y) => y.id === id); return x ? c.blob.subarray(x.off, x.off + x.size) : new Uint8Array(0); };
+    const sh = (b) => hex(sha256(b));
+    add(sh(c.blob.subarray(0, 0x20)) === REF.cyclesHeader, "Header = official Model:Cycles OS 1.13");
+    add(sh(stored(5)) === REF.cyclesMeta, "Section 5 meta = official Model:Cycles OS 1.13");
+    add(sh(stored(2)) === REF.cyclesBootstrap, "Section 2 bootstrap = official Model:Cycles OS 1.13",
+      "Stays in the file only: a Model:Samples keeps its own bootstrap (same version), which starts the Samples OS from this container.");
+    const key = B.findKey([depack(stored(2), null).data], c.blob.subarray(0, c.blob.length - 32), c.blob.subarray(c.blob.length - 32));
+    add(!!key, "Signature checks with the Model:Cycles key", "The key a Cycles OS without the key fix checks updates with.");
+  } catch (e) {
+    add(false, "Model:Cycles container could not be read", e.message);
+  }
+
   const G = "Recognised file";
-  result.checks.push(
-    { group: G, status: "info", title: "Modded-Cycles “Model:Cycles → Samples OS” reference file",
-      detail: "The official Model:Samples OS 1.13 inside the official Model:Cycles container, signed with the Cycles key; byte-identical to Modded-Cycles' tested reference build." },
-    { group: G, status: "warn", title: "Not a custom OS for the Model:Samples: a way back, for one case only",
-      detail: "Use it only on a Model:Samples that runs a Cycles OS WITHOUT the key fix. That OS writes the Cycles container as-is, the Model:Samples bootstrap (never replaced: same version) starts the Samples OS from it, shown in emulation (Modded-Cycles notes/41 §8). Optional clean-up afterwards: send the official model-samples_OS1.13.syx over USB to restore the official container (skip it if you are about to flash a custom smp-os build). The \"Back to Samples OS\" tab does both." });
-  result.verdict = "warn";
+  result.checks.unshift(
+    { group: G, status: "info", title: "Modded-Cycles “Model:Cycles → Samples OS” file",
+      detail: "The official Model:Samples OS 1.13 inside the official Model:Cycles container, signed with the Cycles key: byte-identical to Modded-Cycles' tested build, and to what the Back to Samples OS tab builds from the two official files." },
+    { group: G, status: "warn", title: "One case only: a Model:Samples that runs a Cycles OS WITHOUT the key fix",
+      detail: "Not a custom OS for the Model:Samples. A Cycles OS with the key fix refuses it, the Samples OS and the STARTUP MENU ignore it, and a real Model:Cycles would take it and switch to the Samples OS. On the one machine it is for, that OS writes the Cycles container as-is and the Model:Samples bootstrap (never replaced: same version) starts the Samples OS from it, shown in emulation (Modded-Cycles notes/41 §8). Optional clean-up afterwards: send the official model-samples_OS1.13.syx over USB to restore the official container (skip it if you are about to flash a custom smp-os build). Prefer the \"Back to Samples OS\" tab's Send over USB: it builds this file from your official files, asks the machine which OS it runs before sending, and does the clean-up too.",
+      link: { href: "#revert-unfixed", text: "Back to Samples OS: send it over USB, without the key fix" } });
+  result.checks.splice(2, 0, ...own);
+  if (own.some((c) => c.status !== "pass")) { result.verdict = "critical"; return result; }
+  result.verdict = "onecase";
   const f = result.facts;
   f.transport = "cycles";
   f.routes = [
@@ -874,7 +910,8 @@ function finish(result) {
 function report(r) {
   const L = [];
   const V = { safe: "SAFE: only the OS (section 3) differs from Elektron's Model:Samples firmware",
-    warn: "FLASHABLE WITH CAVEATS", fail: "DO NOT FLASH: the device would refuse it or not boot",
+    warn: "FLASHABLE WITH CAVEATS",
+    onecase: "ONE CASE ONLY: a Model:Samples that runs a Cycles OS WITHOUT the key fix; do not flash it anywhere else", fail: "DO NOT FLASH: the device would refuse it or not boot",
     critical: "DO NOT FLASH: touches the bootstrap / recovery path (brick risk)" };
   L.push(`Model:Samples Firmware Tool: file check (Beta, still under testing)`);
   L.push(`File: ${r.facts.fileName}  (${fmt(r.facts.size)} bytes)`);

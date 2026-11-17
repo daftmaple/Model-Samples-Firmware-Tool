@@ -9,13 +9,15 @@ const { el } = UI;
 const VERDICT = {
   safe: ["✓", "Looks safe to flash", "Only the OS (section 3) differs from Elektron's Model:Samples firmware, and everything it depends on checks out."],
   warn: ["!", "Flashable, with caveats", "Nothing here touches the recovery path, but read the warnings before flashing."],
+  onecase: ["1", "Flashable in one case only", "Only on a Model:Samples that runs a Cycles OS WITHOUT the key fix: it brings it back to the Samples OS. Do not flash it anywhere else. The full Model:Samples check flags its Model:Cycles container, which is expected for this file: those findings are marked “expected” below."],
   fail: ["✕", "Do not flash this file", "The device would refuse it or the OS would not start. The STARTUP MENU still recovers that, but fix the file first."],
   critical: ["✕", "Do not flash: brick risk", "This file changes more than the OS, or it is not a Model:Samples firmware. It touches what the recovery path depends on."],
 };
-const ICON = { pass: "✓", info: "i", skip: "–", warn: "!", fail: "✕", critical: "✕" };
-const LABEL = { pass: "pass", info: "info", skip: "skipped", warn: "warning", fail: "failure", critical: "critical" };
-const RANK = { pass: 0, info: 0, skip: 1, warn: 2, fail: 3, critical: 4 };
-const NAME = { warn: ["warning", "warnings"], fail: ["failure", "failures"], critical: ["critical", "critical"], skip: ["skipped", "skipped"] };
+const ICON = { pass: "✓", info: "i", skip: "–", expected: "≈", warn: "!", fail: "✕", critical: "✕" };
+const LABEL = { pass: "pass", info: "info", skip: "skipped", expected: "expected for this file", warn: "warning", fail: "failure", critical: "critical" };
+const RANK = { pass: 0, info: 0, skip: 1, expected: 2, warn: 2, fail: 3, critical: 4 };
+const NAME = { warn: ["warning", "warnings"], fail: ["failure", "failures"], critical: ["critical", "critical"], skip: ["skipped", "skipped"],
+  expected: ["expected", "expected"] };
 
 const icon = (status) => { const i = el("span", "ic", ICON[status]); i.setAttribute("aria-label", LABEL[status]); return i; };
 const stem = (f) => (f.fileName || "firmware").replace(/\.syx$/i, "");
@@ -76,7 +78,7 @@ function render(r) {
     return n;
   };
   const describe = (n, total) => {
-    const bad = ["critical", "fail", "warn", "skip"].filter((k) => n[k]).map((k) => `${n[k]} ${NAME[k][n[k] > 1 ? 1 : 0]}`);
+    const bad = ["critical", "fail", "warn", "expected", "skip"].filter((k) => n[k]).map((k) => `${n[k]} ${NAME[k][n[k] > 1 ? 1 : 0]}`);
     return bad.length ? bad.join(", ") : `${total} OK`;
   };
 
@@ -102,7 +104,7 @@ function render(r) {
     const rows = el("div", "rows");
     for (const c of g.items) {
       const rw = el("div", "chk s-" + c.status);
-      rw.append(icon(c.status), el("span", "t", c.title));
+      rw.append(icon(c.status), el("span", "t", c.was ? `${c.title} (${LABEL[c.was]} in a Model:Samples file, expected here)` : c.title));
       if (c.detail) rw.append(el("span", "d", c.detail));
       if (c.link) { const a = el("a", "go", c.link.text + " →"); a.href = c.link.href; rw.append(a); }
       rows.append(rw);

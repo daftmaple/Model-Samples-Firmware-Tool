@@ -48,6 +48,9 @@ function steps() {
         sub: "The Samples OS in the Model:Cycles container, signed with the Cycles key: the only thing a Cycles OS without the key fix accepts. The machine answers as a Model:Cycles and restarts as a Model:Samples.",
         where: "Send it with a SysEx tool over USB, while the Cycles OS without the key fix runs. Not from the STARTUP MENU. Only to a Model:Samples: a real Model:Cycles would also take it and switch to the Samples OS.",
         needs: ["cycles", "samples"], product: 0x11, name: "model-samples_OS1.13_for-model-cycles.syx", confirmSamples: true,
+        warn: { title: "One case only.",
+          text: "Flash this file only on a Model:Samples that runs a Cycles OS without the key fix. A Cycles OS with the key fix refuses it, the Samples OS and the STARTUP MENU ignore it, and a real Model:Cycles would take it and switch to the Samples OS. Check a file flags it for that reason: it is a Model:Cycles container, on purpose. Prefer “Send over USB” above: it asks the machine which OS it runs before sending, and waits for the Model:Samples box to be ticked.",
+          button: "Download .syx (Cycles OS without the key fix only)" },
         build: () => {
           const raw = B.crossflash(cyc, smp).raw;
           if (hexSha(raw) !== REF_SAMPLES_ON_CYCLES) throw new Error("result is not Modded-Cycles' reference build");
@@ -57,7 +60,7 @@ function steps() {
         sub: "After the first file the machine already runs the Model:Samples OS, but its flash still holds the Model:Cycles container (header, meta, a copy of the Cycles bootstrap, Cycles signature). Once it has restarted as a Model:Samples, send the official file, unchanged, so the flash ends exactly as after an Elektron update.",
         note: "Skip this if you are about to flash a custom smp-os build: it replaces the whole container anyway.",
         where: "Your official file, unchanged. Once the machine has restarted as a Model:Samples, send it with a SysEx tool over USB.",
-        needs: ["samples"], product: 0x0f, name: "model-samples_OS1.13.syx", build: () => smp },
+        needs: ["samples"], product: 0x0f, name: "model-samples_OS1.13.syx", own: true, build: () => smp },
     ];
   }
   return [];
@@ -147,7 +150,7 @@ function render() {
       send: () => send(s),
       connectHint: "Connect above to send it over USB.",
     }));
-    dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s),
+    dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s), warn: s.warn, own: s.own,
       meta: ready ? "" : "Add the official file(s) in step 2 first." }));
   }
 

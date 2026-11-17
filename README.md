@@ -31,6 +31,12 @@ Two warnings come with a corrected file, from one "Download the fixed .syx" butt
   from the file's own official bootstrap). For the stock Cycles OS this installs the same OS as Modded-Cycles'
   reference build.
 
+One file gets a verdict of its own, **Flashable in one case only**: the *Model:Cycles → Samples OS* way-back file
+(`model-samples_OS1.13_for-model-cycles.syx`, recognised by its exact SHA-256). It is a Model:Cycles container on
+purpose, so the full Model:Samples check flags it as critical; those findings stay listed, marked *expected*, next to
+checks that its header, meta, bootstrap and signature are Elektron's Model:Cycles ones. It may be flashed only on a
+Model:Samples that runs a Cycles OS without the key fix. One changed byte and it gets the full check's verdict.
+
 **Install a Cycles OS.** Installs a modded Model:Cycles OS built for a real Model:Cycles (Modded-Cycles or a
 Modded-Cycles derivative) on a Model:Samples, from that `.syx` and the official `model-samples_OS1.13.syx`. A file
 already packed for the Model:Samples (`smp-os` or `cyc-os`, for example one downloaded from this tab) needs only itself. Laid out like
@@ -84,7 +90,8 @@ tab.
   | *Model:Cycles → Samples OS* | Cycles key | accepted | **accepted: it switches to the Samples OS** |
 
   So *Send over USB* for *Model:Cycles → Samples OS* waits for a ticked "this is a Model:Samples" box; the first way
-  needs no such check. Downloading the file is never blocked.
+  needs no such check. Downloading the file is never blocked, but its row carries a warning (one case only; prefer
+  *Send over USB*). The optional clean-up is your own official file, so it has nothing to download.
 
 The tab runs in the same order as "Install a Cycles OS": (1) how the Cycles OS was installed, (2) the official OS
 files, (3) connect and send over USB, or (4) download the files for a SysEx tool. With a MIDI interface, the files can

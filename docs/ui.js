@@ -52,15 +52,22 @@ function stepState(id, state) {
   if (h) h.dataset.state = state;
 }
 
-/* One file to download for a SysEx tool: its name, where it can be sent, a status line and a Download button. */
-function downloadRow({ name, where, meta, ready, onDownload }) {
-  const r = el("div", "step" + (ready ? "" : " off"));
+/* One file to download for a SysEx tool: its name, where it can be sent, a status line and a Download button.
+ * warn: { title, text, button } for a file that may be flashed in one case only: a warning box, and a warning-coloured
+ * button that names the case. own: the user's own file, unchanged: nothing to download, the button stays disabled. */
+function downloadRow({ name, where, meta, ready, onDownload, warn, own }) {
+  const r = el("div", "step" + (ready ? "" : " off") + (warn ? " step-warn" : ""));
   r.append(el("h4", "mono", name));
   r.append(el("p", "sub", where));
+  if (warn) {
+    const w = el("p", "warn-box");
+    w.append(el("strong", "", warn.title + " "), warn.text);
+    r.append(w);
+  }
   if (meta) r.append(el("p", "meta", meta));
   const row = el("div", "btns");
-  const dl = el("button", "primary", "Download .syx");
-  dl.disabled = !ready;
+  const dl = el("button", warn ? "warn" : "primary", own ? "No download needed: it is your own file" : warn ? warn.button : "Download .syx");
+  dl.disabled = !ready || !!own;
   dl.onclick = onDownload;
   row.append(dl);
   r.append(row);

@@ -36,6 +36,24 @@ const result = (over = {}) => ({
   ...over,
 });
 
+test("the way-back file: a verdict of its own, expected findings in their own colour and wording", (t) => {
+  const raw = require("./helpers.js").firmware("reference/model-samples_OS1.13_for-model-cycles.syx")
+    || require("./helpers.js").firmware("model-cycles_OS1.13-samples.syx");
+  if (!raw) { t.skip("firmware/ lacks the way-back file"); return; }
+  const r = S.check(raw, "model-samples_OS1.13_for-model-cycles.syx");
+  const box = render(r);
+  const v = box.byClass("verdict")[0];
+  assert.equal(v.className, "verdict v-onecase");
+  assert.match(v.textContent, /Flashable in one case only.*WITHOUT the key fix.*marked “expected”/);
+  assert.match(box.byClass("tally")[0].textContent, /5 expected/);
+  const exp = box.byClass("chk").filter((c) => c.className === "chk s-expected");
+  assert.equal(exp.length, 5);
+  assert.match(exp[0].textContent, /\(critical in a Model:Samples file, expected here\)/);
+  assert.ok(box.byClass("gcard").some((g) => g.className === "gcard s-expected" && g.open), "their cards open, dashed");
+  const links = box.byClass("go").map((a) => a.href);
+  assert.deepEqual(links, ["#revert-unfixed"], "only the Back tab link, no 'pack it' link");
+});
+
 test("verdict banner, file facts and routes side by side", () => {
   const box = render(result());
   assert.equal(box.byClass("verdict")[0].className, "verdict v-warn");
@@ -274,7 +292,28 @@ test("back tab: two ways, the files each needs, and the Model:Samples box for th
     ["model-samples_OS1.13_for-model-cycles.syx", "model-samples_OS1.13.syx"]);
   assert.match(rows[0].textContent, /Only to a Model:Samples/);
   assert.match(rows[1].textContent, /unchanged/);
+  // The way-back file: a warning box and a warning button; the official file: the usual button
+  assert.match(rows[0].className, /step-warn/);
+  assert.match(rows[0].byClass("warn-box")[0].textContent, /One case only\..*without the key fix.*Check a file flags it.*Prefer “Send over USB” above/);
+  const [warnBtn, plainBtn] = rows.map((r) => r.byClass("btns")[0].children[0]);
+  assert.equal(warnBtn.className, "warn");
+  assert.match(warnBtn.textContent, /Cycles OS without the key fix only/);
+  assert.equal(plainBtn.textContent, "No download needed: it is your own file");
+  assert.equal(plainBtn.disabled, true, "the official file is the user's own: nothing to download");
+  assert.equal(rows[1].byClass("warn-box").length, 0);
+  click(ids, "rv-mode-fixed");
+  const back = ids["rv-dl"].byClass("step")[0];
+  assert.equal(back.byClass("warn-box").length, 0, "the first way's file needs no warning");
+  assert.equal(back.byClass("btns")[0].children[0].className, "primary");
+  assert.equal(back.byClass("btns")[0].children[0].textContent, "Download .syx", "the first way's file is built here");
+  click(ids, "rv-mode-unfixed");
   assert.ok(rows.every((r) => r.byClass("btns")[0].children[0].disabled), "no files yet");
+  Object.assign(R.state.official, { samples: new Uint8Array(1), cycles: new Uint8Array(1) }); R.render();
+  const [built, own] = ids["rv-dl"].byClass("step").map((r) => r.byClass("btns")[0].children[0]);
+  assert.equal(built.disabled, false, "the way-back file can be downloaded once both files are in");
+  assert.equal(own.disabled, true, "the official file still has nothing to download");
+  assert.doesNotMatch(ids["rv-dl"].byClass("step")[1].className, /off/, "its row is not greyed out: it is ready to send");
+  Object.assign(R.state.official, { samples: null, cycles: null }); R.render();
   assert.equal(ids["rv-download"].hidden, false);
   R.usb.dev = { state: "ok", product: 0x0f, name: "x" };
   assert.match(R.devProblem(R.steps()[0]), /nothing to bring back/);
