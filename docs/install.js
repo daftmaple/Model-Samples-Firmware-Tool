@@ -1,7 +1,8 @@
 /* "Install a Cycles OS" tab: puts a modded Model:Cycles OS (Modded-Cycles or a derivative, built for a real Model:Cycles,
- * or already packed for the Model:Samples) on a Model:Samples. The file is packed with the official model-samples_OS1.13.syx
- * by SamplesSanity.forSamples (the same file as Modded-Cycles' mods_for_samples.py), in the transport of the OS the
- * Model:Samples runs now, then sent over USB (usb.js) or downloaded:
+ * or already packed for the Model:Samples) on a Model:Samples. A Model:Cycles build is packed with the official
+ * model-samples_OS1.13.syx by SamplesSanity.forSamples (the same file as Modded-Cycles' mods_for_samples.py); a file
+ * already packed for the Model:Samples needs only itself. It goes out in the transport of the OS the Model:Samples runs
+ * now, sent over USB (usb.js) or downloaded:
  *
  *  - its own Model:Samples OS: smp-os (product 0x0F), also the STARTUP MENU over MIDI IN, whatever OS is installed;
  *  - a Cycles OS with the key fix (Modded-Cycles or a derivative): cyc-os (product 0x11), over USB only.
@@ -16,7 +17,7 @@
 
 const S = window.SamplesSanity, UI = window.SamplesUI;
 const { $, el, kb } = UI;
-const st = { mode: null, mod: null, smp: null, result: null, error: null, busy: false, log: [] };
+const st = { mode: null, mod: null, smp: null, needSmp: null, result: null, error: null, busy: false, log: [] };
 let gen = 0;                                               // bumped by reset(): a build still running is dropped
 const hexSha = (raw) => S.hex(S.sha256(raw));
 const DEV = { 0x11: "Model:Cycles", 0x0f: "Model:Samples" };
@@ -57,9 +58,11 @@ async function addFiles(files) {
   await build();
 }
 
+/* Packs as soon as the Cycles OS is in. The official file is waited for only when forSamples says it needs it
+ * (a Model:Cycles build); st.needSmp: null (not known yet), true, false (already packed for the Model:Samples). */
 async function build() {
   st.result = null; st.error = null;
-  if (!st.mod || !st.smp) { render(); return; }
+  if (!st.mod) { st.needSmp = null; render(); return; }
   st.busy = true; render();
   const my = gen;
   await new Promise((res) => setTimeout(res, 20));          // let "Packing…" paint
@@ -67,10 +70,12 @@ async function build() {
   try {
     st.result = S.forSamples(st.mod.raw, st.smp);
     const r = st.result;
+    st.needSmp = r.from === "cycles";
     log(r.from === "cycles"
       ? `Packed the ${r.stock ? "stock" : "modded"} Model:Cycles OS 1.13 for the Model:Samples: official Samples container, 32-byte key fix, Samples signature. Checked again: safe.`
       : `${st.mod.name} is already packed for the Model:Samples${r.keyFixAdded ? "; the missing key fix has been added" : ""}. Checked again: safe.`, "ok");
   } catch (e) {
+    if (e.needsSamplesOs) { st.needSmp = true; st.busy = false; render(); return; }
     st.error = e.message || String(e);
     log(`${st.mod.name}: not packed. ${st.error}`, "bad");
   }
@@ -117,6 +122,10 @@ function detected() {
 
 
 // ---- rendering --------------------------------------------------------------------------------------------------
+function waiting() {
+  return st.mod && st.needSmp ? "Add the official model-samples_OS1.13.syx in step 2 first." : "Add your Cycles OS in step 2 first.";
+}
+
 function log(msg, kind) { st.log.push({ msg, kind: kind || "" }); }
 
 function render() {
@@ -131,7 +140,11 @@ function render() {
   UI.stepState("in-h-mode", st.mode ? "done" : "");
   UI.stepState("in-h-files", st.result ? "done" : "");
 
-  UI.needList($("in-need"), [[st.mod, st.mod ? st.mod.name : "your Cycles OS .syx"], [st.smp, "model-samples_OS1.13.syx"]]);
+  const need = [[st.mod, st.mod ? st.mod.name : "your Cycles OS .syx"]];
+  if (st.needSmp !== false || st.smp)
+    need.push([st.smp, "model-samples_OS1.13.syx" + (st.needSmp === null && !st.smp ? " (not needed for a file already packed for the Model:Samples)" : "")]);
+  UI.needList($("in-need"), need);
+  $("in-need-note").hidden = st.needSmp !== false || !!st.smp;
 
   const box = $("in-steps"), dls = $("in-dl");
   box.textContent = ""; dls.textContent = "";
@@ -141,13 +154,13 @@ function render() {
       ready,
       meta: st.busy ? "Packing and checking…"
         : ready ? `${s.name} · ${kb(st.result[s.key].length)} · goes to a machine that answers as ${DEV[s.product]}`
-        : st.error ? "Not packed: see Activity below." : "Add both files in step 2 first.",
+        : st.error ? "Not packed: see Activity below." : waiting(),
       problem: () => devProblem(s),
       send: () => send(s),
       connectHint: "Connect above to send it over USB.",
     }));
     dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s),
-      meta: st.busy ? "Packing and checking…" : ready ? kb(st.result[s.key].length) : "Add both files in step 2 first." }));
+      meta: st.busy ? "Packing and checking…" : ready ? kb(st.result[s.key].length) : st.error ? "Not packed: see Activity below." : waiting() }));
   }
 
   usb.renderBar();
@@ -158,7 +171,7 @@ function render() {
 function reset() {
   if (usb.sending) return false;
   gen++;
-  Object.assign(st, { mode: null, mod: null, smp: null, result: null, error: null, busy: false, log: [] });
+  Object.assign(st, { mode: null, mod: null, smp: null, needSmp: null, result: null, error: null, busy: false, log: [] });
   render();
   return true;
 }

@@ -1,4 +1,5 @@
-// forSamples(): a modded Model:Cycles .syx + the official Model:Samples OS → the same OS packed for the Model:Samples.
+// forSamples(): a modded Model:Cycles .syx + the official Model:Samples OS → the same OS packed for the Model:Samples
+// (a file already packed for the Model:Samples needs no official file).
 // Real Model:Cycles builds are made here from the _for-samples files (same MAIN OS, key constant set back to the Cycles
 // key, official Model:Cycles container, Cycles signature), then compared with Modded-Cycles' own modsForSamples().
 // Needs the .syx files in firmware/ (never committed); each test skips when its file is missing.
@@ -83,6 +84,24 @@ test("a smp-os file: the cyc-os twin is Modded-Cycles' own cyc-os file", (t) => 
   assert.equal(r.keyFixAdded, false);
   assert.ok(same(r.cyc, S.rewrap(f[2])));
   assert.ok(same(r.smp, S.rewrap(f[1])));
+});
+
+test("a file already packed for the Model:Samples needs only itself", (t) => {
+  const f = need(t, SMP, MC2, MC2_CYC); if (!f) return;
+  for (const raw of [f[1], f[2]]) {
+    const alone = S.forSamples(raw, null), withSmp = S.forSamples(raw, f[0]);
+    assert.equal(alone.from, "samples");
+    assert.ok(same(alone.smp, withSmp.smp) && same(alone.cyc, withSmp.cyc), "same files with or without the official one");
+  }
+  assert.ok(same(S.forSamples(f[2]).smp, S.rewrap(f[1])), "a cyc-os file alone gives back its smp-os twin");
+});
+
+test("a Model:Cycles build without the official file asks for it", (t) => {
+  const cyc = need(t, CYC); if (!cyc) return;
+  let err = null;
+  try { S.forSamples(cyc, null); } catch (e) { err = e; }
+  assert.ok(err && err.needsSamplesOs, "needsSamplesOs set");
+  assert.match(err.message, /needs the official model-samples_OS1\.13\.syx/);
 });
 
 test("an elektron-firmware-tool cross-flash: the key fix is added, as fixKey()", (t) => {

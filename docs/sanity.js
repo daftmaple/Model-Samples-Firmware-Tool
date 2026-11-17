@@ -761,22 +761,27 @@ function fixKey(raw) {
  *  - Model:Cycles container: section 3 goes into the official Samples container, its 32-byte key constant recomputed for
  *    the Samples key (only those bytes change), signed with the Samples key from the official file's bootstrap.
  *  - A file already packed for the Model:Samples: kept as it is (the key fix added when missing, as fixKey()).
+ * The official file is only read for a Model:Cycles container: a file already packed for the Model:Samples needs only
+ * itself (smpRaw may then be null). Without it, a Model:Cycles container throws an error with needsSamplesOs set.
  * Returns both transports, with 21-bit packet numbers, each checked again and refused unless "safe":
  *   { smp: 0x0F file, cyc: 0x11 file, from: "cycles" | "samples", stock, keyFixAdded, mainSha }. Throws with the reason. */
 function forSamples(modRaw, smpRaw) {
   modRaw = modRaw instanceof Uint8Array ? modRaw : new Uint8Array(modRaw);
-  smpRaw = smpRaw instanceof Uint8Array ? smpRaw : new Uint8Array(smpRaw);
-  if (hex(sha256(smpRaw)) !== REF.samplesSyx) throw new Error("the Model:Samples file must be the official model-samples_OS1.13.syx from elektron.se");
+  if (smpRaw) {
+    smpRaw = smpRaw instanceof Uint8Array ? smpRaw : new Uint8Array(smpRaw);
+    if (hex(sha256(smpRaw)) !== REF.samplesSyx) throw new Error("the Model:Samples file must be the official model-samples_OS1.13.syx from elektron.se");
+  }
   const B = builder();
   const pre = check(modRaw);
   if (pre.facts.sha256 === REF.samplesSyx) throw new Error("this is the official Model:Samples OS, not a Model:Cycles OS");
   if (pre.facts.sha256 === REF.samplesOnCyclesSyx) throw new Error("this is the “Model:Cycles → Samples OS” way-back file, not a Model:Cycles OS");
   const bad = pre.checks.find((c) => c.group === "SysEx transport" && RANK[c.status] >= RANK.fail);
   if (bad) throw new Error(bad.title + (bad.detail ? ": " + bad.detail : ""));
-  const smp = decode(smpRaw), mod = decode(modRaw);
-  const both = (stream, mainSha, extra) => {
+  const mod = decode(modRaw);
+  /* Both transports keep the packet numbering of the file they come from (Elektron's files all start at the same number). */
+  const both = (stream, mainSha, start, extra) => {
     const out = {};
-    for (const [k, prod, start] of [["smp", 0x0f, smp.start], ["cyc", 0x11, mod.prod === 0x11 ? mod.start : smp.start]]) {
+    for (const [k, prod] of [["smp", 0x0f], ["cyc", 0x11]]) {
       const raw = rewrap(B.wrap(stream, prod, start));
       const r = check(raw);
       if (r.verdict !== "safe" || r.facts.keyfix !== true || r.facts.transport !== (prod === 0x11 ? "cycles" : "samples") || r.facts.mainSha !== mainSha)
@@ -799,7 +804,7 @@ function forSamples(modRaw, smpRaw) {
       raw = fixKey(modRaw); keyFixAdded = true;
     }
     const r = check(raw);
-    return both(decode(raw).stream, r.facts.mainSha, { from: "samples", stock: !!r.facts.cyclesStock, keyFixAdded });
+    return both(decode(raw).stream, r.facts.mainSha, mod.start, { from: "samples", stock: !!r.facts.cyclesStock, keyFixAdded });
   }
 
   // A Model:Cycles container: every part but section 3 must be Elektron's Model:Cycles OS 1.13
@@ -827,7 +832,12 @@ function forSamples(modRaw, smpRaw) {
   const text = at(CYC_KEY_STR, 11), co = CYC_KEY_CONST - MAIN_BASE;
   if (!eq(deriveKey(text, main.subarray(co, co + 32)), cKey)) throw new Error("the OS's own update key is not the Model:Cycles key: it was changed by this build");
 
-  const sc = B.parseContainer(smp.stream);
+  if (!smpRaw) {
+    const e = new Error("packing a Model:Cycles OS for the Model:Samples needs the official model-samples_OS1.13.syx");
+    e.needsSamplesOs = true;
+    throw e;
+  }
+  const smp = decode(smpRaw), sc = B.parseContainer(smp.stream);
   const sStored = (id) => { const s = sc.sections.find((x) => x.id === id); return sc.blob.subarray(s.off, s.off + s.size); };
   const sKey = B.findKey([depack(sStored(2), null).data], sc.blob.subarray(0, sc.blob.length - 32), sc.blob.subarray(sc.blob.length - 32));
   if (!sKey) throw new Error("Model:Samples key not found");
@@ -839,7 +849,7 @@ function forSamples(modRaw, smpRaw) {
   const blob = B.rebuildContainer(sc, { 3: s3 }, sKey);
   if (blob.length > CONTAINER_MAX) throw new Error(`the container would be ${fmt(blob.length)} bytes, too big for the Model:Samples flash (max ${fmt(CONTAINER_MAX)})`);
   const z = Uint8Array.from(main); z.fill(0, co, co + 32);
-  return both(B.buildStream(blob, BYTES_PER_MSG), hex(sha256(patched)),
+  return both(B.buildStream(blob, BYTES_PER_MSG), hex(sha256(patched)), mod.start,
     { from: "cycles", stock: hex(sha256(z)) === REF.cyclesMainNoKey, keyFixAdded: true });
 }
 

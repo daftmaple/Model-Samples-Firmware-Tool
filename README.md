@@ -32,7 +32,8 @@ Two warnings come with a corrected file, from one "Download the fixed .syx" butt
   reference build.
 
 **Install a Cycles OS.** Installs a modded Model:Cycles OS built for a real Model:Cycles (Modded-Cycles or a
-Modded-Cycles derivative) on a Model:Samples, from that `.syx` and the official `model-samples_OS1.13.syx`. Laid out like
+Modded-Cycles derivative) on a Model:Samples, from that `.syx` and the official `model-samples_OS1.13.syx`. A file
+already packed for the Model:Samples (`smp-os` or `cyc-os`, for example one downloaded from this tab) needs only itself. Laid out like
 "Back to Samples OS": (1) which OS the Model:Samples runs now, (2) your files, (3) connect and send over USB (the
 machine's answer is compared with step 1), or (4) download the file for a SysEx tool. It builds
 the same file as Modded-Cycles' `mods_for_samples.py` / `modsForSamples`: the OS (section 3) in the official Samples

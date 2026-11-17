@@ -6,34 +6,7 @@ const fs = require("fs"), path = require("path");
 const S = require("../docs/sanity.js");
 const { SITE } = require("./helpers.js");
 
-// ---- Minimal DOM: just what render() uses ------------------------------------------------------------------------
-class Node {
-  constructor(tag) { Object.assign(this, { tag, children: [], className: "", _text: "", open: false, listeners: {}, style: {}, dataset: {} }); }
-  set textContent(v) { this._text = String(v); this.children = []; }
-  get textContent() { return this.children.length ? this.children.map((c) => c.textContent).join("") : this._text; }
-  append(...cs) { for (const c of cs) this.children.push(typeof c === "string" ? text(c) : c); }
-  prepend(c) { this.children.unshift(c); }
-  addEventListener(t, f) { this.listeners[t] = f; }
-  replaceWith() {} remove() {} setAttribute() {} select() {}
-  querySelector() { return (this._q ||= new Node("span")); }
-  get classList() { return { add() {}, remove() {}, toggle() {} }; }
-  toggle(open) { this.open = open; if (this.listeners.toggle) this.listeners.toggle(); }
-  all(pred, out = []) { for (const c of this.children) { if (c instanceof Node) { if (pred(c)) out.push(c); c.all(pred, out); } } return out; }
-  byClass(cls) { return this.all((n) => n.className.split(" ").includes(cls)); }
-}
-const text = (s) => ({ textContent: s });
-
-/* Runs docs/ scripts in order against a fake window/document, the way index.html loads them. */
-const PARAMS = ["window", "document", "navigator", "location", "URL", "Blob", "setTimeout"];
-function run(files, env) {
-  for (const f of files)
-    new Function(...PARAMS, fs.readFileSync(path.join(SITE, f), "utf8"))(...PARAMS.map((k) => env[k]));
-  return env.window;
-}
-function fakeDocument(ids, extra) {
-  return Object.assign({ readyState: "complete", createElement: (t) => new Node(t), createTextNode: text,
-    getElementById: (id) => (ids[id] ||= new Node("div")), body: new Node("body") }, extra);
-}
+const { Node, run, fakeDocument, loadTab, PARAMS } = require("./dom.js");
 
 function loadRender(window = {}, location = { hash: "" }) {
   const env = { window: Object.assign(window, { SamplesSanity: S, addEventListener() {}, scrollTo() {} }),
@@ -154,17 +127,6 @@ test("the fixed-file button also covers a fixable missing key fix", () => {
 });
 
 // ---- "Install a Cycles OS" tab (docs/install.js, on docs/usb.js) ---------------------------------------------------
-function loadTab(f, window = {}) {
-  const ids = {}, saved = [];
-  const document = fakeDocument(ids, {
-    createElement: (t) => { const n = new Node(t); if (t === "a") n.click = () => saved.push(n.download); return n; },
-  });
-  const location = { hash: "" };
-  const env = { window: Object.assign({ SamplesSanity: S, MCFlasher: {}, addEventListener() {}, isSecureContext: false }, window),
-    document, navigator: {}, location, URL: { createObjectURL: () => "blob:x", revokeObjectURL() {} }, Blob: function () {}, setTimeout: (fn) => fn() };
-  run(["ui.js", "usb.js", f], env);
-  return { ids, saved, location, window: env.window };
-}
 function loadInstall() { const t = loadTab("install.js"); return Object.assign(t, { I: t.window.SamplesInstall }); }
 const file = (name, bytes) => ({ name, arrayBuffer: async () => bytes });
 const click = (ids, id) => ids[id].onclick();
@@ -192,7 +154,7 @@ test("install tab: same three steps as Back to Samples OS; one file per OS, sent
   assert.match(ids["in-need"].textContent, /needed/);
   let card = ids["in-steps"].byClass("step")[0];
   assert.match(card.className, /off/);
-  assert.match(card.textContent, /Add both files/);
+  assert.match(card.textContent, /Add your Cycles OS/);
 
   await I.addFiles([file("model-cycles_OS1.13.syx", cyc)]);
   assert.equal(I.state.error, null);
@@ -217,6 +179,31 @@ test("install tab: same three steps as Back to Samples OS; one file per OS, sent
   await I.addFiles([file("bad.syx", cyc.subarray(0, 4000))]);
   assert.match(ids["in-log"].textContent, /bad\.syx: not packed\. /);
   assert.equal(dlRow().byClass("btns")[0].children[0].disabled, true);
+});
+
+test("install tab: a Model:Cycles build waits for the official file; a packed file needs only itself", async (t) => {
+  const { firmware } = require("./helpers.js");
+  const cyc = firmware("model-cycles_OS1.13.syx"), packed = firmware("modded-cycles-os_2.0_for-samples_cyc-os.syx");
+  if (!cyc || !packed) { t.skip("firmware/ lacks the files"); return; }
+  let { I, ids } = loadInstall();
+  click(ids, "in-mode-samples");
+  assert.match(ids["in-need"].textContent, /not needed for a file already packed/, "before any file: both may be needed");
+  await I.addFiles([file("model-cycles_OS1.13.syx", cyc)]);
+  assert.equal(I.state.result, null);
+  assert.equal(I.state.error, null, "waiting, not an error");
+  assert.equal(I.state.needSmp, true);
+  assert.match(ids["in-need"].textContent, /needed.*model-samples_OS1\.13\.syx/);
+  assert.match(ids["in-steps"].byClass("step")[0].textContent, /Add the official model-samples_OS1\.13\.syx/);
+
+  ({ I, ids } = loadInstall());
+  click(ids, "in-mode-samples");
+  await I.addFiles([file("modded-cycles-os_2.0_for-samples_cyc-os.syx", packed)]);
+  assert.equal(I.state.error, null);
+  assert.equal(I.state.needSmp, false);
+  assert.ok(I.state.result, "packed without the official file");
+  assert.doesNotMatch(ids["in-need"].textContent, /model-samples_OS1\.13/, "the official file is not listed");
+  assert.equal(ids["in-need-note"].hidden, false);
+  assert.match(ids["in-log"].textContent, /already packed for the Model:Samples/);
 });
 
 test("install tab: the machine that answers must run the OS chosen in step 1", () => {
