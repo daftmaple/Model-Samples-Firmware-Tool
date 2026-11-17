@@ -139,7 +139,7 @@ test("rewrap() refuses what it cannot re-wrap faithfully", () => {
 test("report(): verdict line and one header per group", () => {
   const r = S.check(good(), "x.syx");
   const txt = S.report(r);
-  assert.match(txt, /^Model:Samples firmware sanity check/);
+  assert.match(txt, /^Model:Samples Firmware Tool: file check/);
   assert.match(txt, /File: x\.syx {2}\(/);
   assert.match(txt, /Verdict: DO NOT FLASH: the device would refuse it/);
   assert.match(txt, /\n\[SysEx transport\]\n/);

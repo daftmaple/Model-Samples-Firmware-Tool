@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Samples Firmware Check (Beta)</title>
-<meta name="description" content="Check a custom OS .syx before flashing it to an Elektron Model:Samples: only the OS may differ from Elektron's firmware.">
+<title>Model:Samples Firmware Tool (Beta)</title>
+<meta name="description" content="Check a custom OS .syx before flashing it to an Elektron Model:Samples, pack a modded Model:Cycles OS for it, or bring it back to its own OS.">
 <style>
 :root {
   --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1db;
@@ -137,7 +137,7 @@ a { color: var(--accent); }
 .confirm { display: block; font-size: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 8px 0; }
 .step { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; }
 .step .btns { margin-top: auto; }
-#rv-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin: 10px 0; }
+#rv-steps, #in-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin: 10px 0; }
 .rv-flow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 0 28px; align-items: start; }
 .rv-flow .step-h { margin-top: 24px; }
 .step.off { opacity: .6; }
@@ -162,10 +162,11 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 </head>
 <body>
 <main>
-  <h1>Model:Samples firmware check <span class="beta">Beta</span></h1>
-  <div class="beta-note"><strong>Beta: still under testing.</strong> The checks are verified against real files and the official firmware, but the "Back to Samples OS" tab has only been tested against a simulated device, not yet on a real Model:Samples. Keep the STARTUP MENU route (FUNC + power on, TRIG 4, official file over MIDI IN) at hand.</div>
+  <h1>Model:Samples Firmware Tool <span class="beta">Beta</span></h1>
+  <div class="beta-note"><strong>Beta: still under testing.</strong> The checks are verified against real files and the official firmware, but the "Back to Samples OS" tab has only been tested against a simulated device, not yet on a real Model:Samples, and files from the "Install a Cycles OS" tab are byte-identical to Modded-Cycles' own builds but have not been sent from this page to a real machine yet. Keep the STARTUP MENU route (FUNC + power on, TRIG 4, official file over MIDI IN) at hand.</div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="check">Check a file</button>
+    <button role="tab" data-tab="install">Install a Cycles OS</button>
     <button role="tab" data-tab="revert">Back to Samples OS</button>
   </nav>
 
@@ -198,6 +199,62 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     <p>If an OS ever fails to boot, the STARTUP MENU still works: hold FUNC while powering on, press TRIG 4 (OS UPGRADE), and send the official <span class="mono">model-samples_OS1.13.syx</span> to the <strong>MIDI IN</strong> through a MIDI interface. USB does not work in that menu.</p>
     <p>The page stores no Elektron firmware bytes and no key, only SHA-256 fingerprints of the official OS 1.13 parts. Format and rules come from <a href="https://github.com/18nelli18/Modded-Cycles">Modded-Cycles</a> (mtlib, mods_for_samples.py, notes 02/41/57) and the in-place boot layout from Supermodel (notes/41 §9).</p>
   </details>
+  </section>
+
+  <section id="tab-install" hidden>
+    <p class="lede">Install a modded Model:Cycles OS on a Model:Samples over USB. Drop the file built for a real Model:Cycles (Modded-Cycles or a Modded-Cycles derivative) or one already packed for the Model:Samples. With your official <span class="mono">model-samples_OS1.13.syx</span>, the page packs it the way Modded-Cycles does: the same OS in the official Model:Samples container, with the 32-byte key fix, signed with the Model:Samples key. The result must then pass every check of the <a href="#check">Check a file</a> tab.</p>
+
+    <div class="callout">
+      <strong>Before you start:</strong> back up your projects and samples with Elektron Transfer. Close Elektron Transfer and Overbridge so this page can use the USB port.
+    </div>
+
+    <h2 class="step-h">1. Which OS is on the Model:Samples now?</h2>
+    <div class="modes">
+      <button class="mode" id="in-mode-samples">
+        <strong>Its own Model:Samples OS, or flashing from the STARTUP MENU</strong>
+        <span>A first install, or after going back. Gets the <span class="mono">smp-os</span> file. Transfer shows the machine as Model:Samples. Also the one to pick for the STARTUP MENU (FUNC + power on) over MIDI IN with a SysEx tool, <em>whatever OS is installed</em>.</span>
+      </button>
+      <button class="mode" id="in-mode-cycles">
+        <strong>A Cycles OS with the key fix</strong>
+        <span>Installed with Modded-Cycles, a Modded-Cycles derivative or this page: changing mods. Gets the <span class="mono">cyc-os</span> file. Transfer shows the machine as Model:Cycles. <strong>Over USB only, while the Cycles OS runs:</strong> the STARTUP MENU ignores this file.</span>
+      </button>
+    </div>
+    <p class="hint">A Cycles OS <em>without</em> the key fix (for example an elektron-firmware-tool cross-flash) takes neither file over USB. Go back first with the <a href="#revert-unfixed">Back to Samples OS</a> tab (second way), then pick “Its own Model:Samples OS”. Not sure which you have? The machine tells you once MIDI is connected in step 3.</p>
+
+    <div class="rv-flow">
+    <div id="in-files" hidden>
+      <h2 class="step-h">2. Your files</h2>
+      <label class="drop small" id="in-drop">
+        <input type="file" id="in-file" accept=".syx,application/octet-stream" multiple>
+        <strong>Drop both .syx files here</strong>
+        <span>Your Cycles OS, and the official <span class="mono">model-samples_OS1.13.syx</span> from elektron.se (recognised by its SHA-256). Nothing is uploaded.</span>
+      </label>
+      <ul class="need" id="in-need"></ul>
+    </div>
+
+    <div id="in-send" hidden>
+      <h2 class="step-h">3. Send it</h2>
+      <div class="midi">
+        <button id="in-connect">Connect MIDI</button>
+        <select id="in-port" disabled aria-label="MIDI output"></select>
+        <span id="in-dev" class="dev"></span>
+      </div>
+      <div id="in-steps"></div>
+      <div class="progress" id="in-progress" hidden><span></span></div>
+      <ul class="log" id="in-log"></ul>
+      <p class="hint">Without Web MIDI: download the file and drop it on Elektron Transfer, or send it with any SysEx tool. Only the <span class="mono">smp-os</span> file goes through the STARTUP MENU (hold FUNC while powering on, press TRIG 4 (OS UPGRADE), and send it to the MIDI IN through a MIDI interface), whatever OS is installed. The STARTUP MENU ignores the <span class="mono">cyc-os</span> file: for that route, pick “Its own Model:Samples OS, or flashing from the STARTUP MENU” in step 1.</p>
+    </div>
+    </div>
+
+    <details class="about">
+      <summary>What is checked, and what is not</summary>
+      <p>A file built for a real Model:Cycles must be Elektron's Model:Cycles OS 1.13 in everything but the OS: header, section table, bootstrap, updater and meta match Elektron's fingerprints, and its signature checks with the Model:Cycles key (derived from its own bootstrap, so the official Model:Cycles OS is not needed). The OS's update-check code must be intact, so the key fix applies safely. Only the OS is carried over, and only its 32 key bytes change. A file already packed for the Model:Samples is kept as it is, with the key fix added if it lacks it.</p>
+      <p>What the page cannot check is whether each mod works on a Model:Samples. Both machines run the same hardware and Modded-Cycles builds the same mods for both. If an OS ever fails to start, the STARTUP MENU (hold FUNC while powering on, TRIG 4, the official <span class="mono">model-samples_OS1.13.syx</span> to the MIDI IN) brings the machine back.</p>
+    </details>
+
+    <aside class="credit">
+      <p><strong>Credit:</strong> installing a Cycles OS on a Model:Samples, with the 32-byte key fix, is <a href="https://github.com/18nelli18">18nelli18</a>'s work in <a href="https://github.com/18nelli18/Modded-Cycles">Modded-Cycles</a> (notes/41, notes/57). This tab builds the same files as its <span class="mono">mods_for_samples.py</span>, byte for byte.</p>
+    </aside>
   </section>
 
   <section id="tab-revert" hidden>
@@ -257,14 +314,17 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 <script src="sanity.js"></script>
 <script src="vendor/modded-cycles/builder.js"></script>
 <script src="vendor/modded-cycles/flasher.js"></script>
+<script src="usb.js"></script>
 <script src="revert.js"></script>
+<script src="install.js"></script>
 <script>
 (function () {
   const show = () => {
-    const tab = location.hash.startsWith("#revert") ? "revert" : "check";
+    const tab = location.hash.startsWith("#revert") ? "revert" : location.hash.startsWith("#install") ? "install" : "check";
     for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
     document.getElementById("tab-check").hidden = tab !== "check";
     document.getElementById("tab-revert").hidden = tab !== "revert";
+    document.getElementById("tab-install").hidden = tab !== "install";
   };
   for (const b of document.querySelectorAll(".tabs button")) b.onclick = () => { history.replaceState(null, "", "#" + b.dataset.tab); show(); };
   window.addEventListener("hashchange", show);
@@ -445,6 +505,18 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       };
       act.prepend(fix);
     }
+    // Install it from the Install a Cycles OS tab: a Model:Cycles build, or a Cycles OS packed for the Model:Samples
+    if (window.SamplesInstall && r.raw && (f.cyclesContainer || (f.os === "cycles" && (r.verdict === "safe" || r.verdict === "warn")))) {
+      const go = el("button", "primary", "Install it on a Model:Samples →");
+      go.title = f.cyclesContainer ? "Pack it for the Model:Samples, then send it over USB or download it"
+        : "Send it over USB, or get it in the other transport (smp-os / cyc-os)";
+      go.onclick = () => {
+        window.SamplesInstall.load(f.fileName || "firmware.syx", r.raw);
+        location.hash = f.cyclesContainer ? "#install" : f.transport === "cycles" ? "#install-cycles" : "#install-samples";
+        window.scrollTo(0, 0);
+      };
+      act.prepend(go);
+    }
     box.append(act);
     return box;
   }
@@ -465,6 +537,9 @@ button:disabled { opacity: .45; cursor: not-allowed; }
       }
     }
   }
+
+  // From the Install a Cycles OS tab: check the file it built
+  window.SamplesCheck = { show: (name, raw) => handle([{ name, arrayBuffer: async () => raw }]) };
 
   input.addEventListener("change", () => { if (input.files.length) handle([...input.files]); input.value = ""; });
   ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));

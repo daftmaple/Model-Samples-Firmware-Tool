@@ -30,6 +30,7 @@ test("official Model:Cycles OS 1.13: critical (Cycles container and bootstrap)",
   const r = S.check(raw, CYC);
   assert.equal(r.verdict, "critical");
   assert.equal(find(r, /Model:Cycles container/).status, "critical");
+  assert.equal(find(r, /Model:Cycles container/).link.href, "#install");
   assert.match(find(r, /Section 2 bootstrap MODIFIED/).detail, /It is the Model:Cycles bootstrap/);
   assert.match(find(r, /Section 5 meta MODIFIED/).detail, /It is the Model:Cycles meta/);
   assert.equal(find(r, /Signature not checked/).status, "skip");

@@ -1,9 +1,10 @@
-# Model:Samples firmware check (Beta)
+# Model:Samples Firmware Tool (Beta)
 
 > **Beta: still under testing.** The checks are verified against real files and the official firmware. The
-> "Back to Samples OS" tab has only been tested against a simulated device, not yet on a real Model:Samples.
+> "Back to Samples OS" tab has only been tested against a simulated device, not yet on a real Model:Samples. Files from
+> the "Install a Cycles OS" tab are byte-identical to Modded-Cycles' own builds, but not yet sent from this page to a real machine.
 
-A static page with two tabs, for a Model:Samples running a custom (Model:Cycles-based) OS.
+A static page with three tabs, for a Model:Samples running a custom (Model:Cycles-based) OS.
 
 **Check a file.** Checks a `.syx` before you flash it: only the MAIN OS (section 3) may differ from Elektron's official
 Model:Samples OS 1.13 container, and nothing the recovery path (bootstrap / STARTUP MENU) depends on may be touched.
@@ -14,6 +15,35 @@ Two warnings come with a corrected file to download, checked again before it is 
   key fix, as Modded-Cycles applies it (only those 32 bytes of the OS change, re-signed with the Samples key derived
   from the file's own official bootstrap). For the stock Cycles OS this installs the same OS as Modded-Cycles'
   reference build.
+
+**Install a Cycles OS.** Installs a modded Model:Cycles OS built for a real Model:Cycles (Modded-Cycles or a
+Modded-Cycles derivative) on a Model:Samples, from that `.syx` and the official `model-samples_OS1.13.syx`. Laid out like
+"Back to Samples OS": (1) which OS the Model:Samples runs now, (2) your files, (3) send over USB or download. It builds
+the same file as Modded-Cycles' `mods_for_samples.py` / `modsForSamples`: the OS (section 3) in the official Samples
+container, with the 32-byte key fix (only those bytes change), signed with the Samples key. The official Model:Cycles
+OS is not needed. The Model:Cycles key comes from the file's own bootstrap after it matches Elektron's fingerprint, and
+the file's signature must check with it. The OS chosen in step 1 picks the transport; both are checked again and
+offered only if "Safe", and USB sending refuses a machine that answers as the other product:
+
+| Output | Transport | Flash it from |
+|---|---|---|
+| `…_for-samples_smp-os.syx` | 0x0F | a Model:Samples on its own OS (USB: Transfer, any SysEx tool), or its STARTUP MENU over MIDI IN |
+| `…_for-samples_cyc-os.syx` | 0x11 | a Model:Samples already on a Cycles OS with the key fix, over USB (changing mods later) |
+
+The STARTUP MENU takes only the smp-os file, whatever OS is installed: to flash from it with a SysEx tool, pick "Its own
+Model:Samples OS, or flashing from the STARTUP MENU" in step 1. The tab says so in step 1 and on the cyc-os card.
+
+Refused when anything but the OS differs from Elektron's Model:Cycles OS 1.13 (header, section table, bootstrap,
+updater, meta), when the signature does not check, when the OS's update-check code or its key constant was changed,
+or when the result is too big for the Model:Samples flash. An OS past 0x40200000 (Supermodel) is accepted under the
+in-place unpacking rule, which Modded-Cycles' builder does not apply. A file already packed for the Model:Samples is
+accepted too, with the key fix added if missing. What it cannot check is whether each
+mod works on a Model:Samples. The hardware is the same and Modded-Cycles builds the same mods for both machines, and
+the STARTUP MENU remains the way back if an OS does not start.
+
+The two tabs link to each other. A Check result for a Model:Cycles build, or for a Cycles OS packed for the Model:Samples,
+has an "Install it on a Model:Samples" button that opens this tab with the file loaded. Each file this tab builds has a
+"Check it" button that opens its full report in the Check tab.
 
 **Back to Samples OS.** Brings a Model:Samples that runs a Model:Cycles OS back to its own OS over USB, the two ways
 18nelli18's [Modded-Cycles](https://github.com/18nelli18/Modded-Cycles) flasher offers:
@@ -60,7 +90,10 @@ the page and its scripts are served, not the tests or this README. Everything ru
 - `docs/`: the page, everything it loads and nothing else (the GitHub Pages folder; `.nojekyll` serves it as is).
   - `index.html`: the UI.
   - `sanity.js`: checking logic, with no DOM (browser `window.SamplesSanity`, Node `require`). `fixKey()` uses the vendored builder.
+  - `sanity.js` also has `forSamples()`, the packing behind "Install a Cycles OS".
+  - `install.js`: the "Install a Cycles OS" tab.
   - `revert.js`: the "Back to Samples OS" tab.
+  - `usb.js`: USB sending shared by both tabs (Web MIDI, port menu, asking the machine who it is, fast USB method).
   - `vendor/modded-cycles/`: `builder.js` and `flasher.js` from Modded-Cycles at commit `259441967e39`, unchanged (MIT, licences alongside).
 - `test/cli.js`: command-line runner, `node test/cli.js firmware/*.syx` (`BRIEF=1` for one line per file).
 - `test/*.test.js`: tests, `npm test` (Node 22+, no dependencies).
@@ -69,7 +102,12 @@ the page and its scripts are served, not the tests or this README. Everything ru
   - `firmware`: verdicts on real files, the two ways back built with the vendored builder, and tampered copies of
     the official OS (bootstrap, updater, meta, section table, signature, checksum). Each test skips when its file
     is missing from `firmware/`.
-  - `ui`: the result card of `docs/index.html`, against a minimal DOM stand-in.
+  - `convert`: `forSamples()` on Model:Cycles builds made from the `_for-samples` files, byte-identical to
+    Modded-Cycles' `modsForSamples` in both transports, the stock Cycles OS (Modded-Cycles' reference file), Supermodel
+    past 0x40200000, files already packed for the Model:Samples, and refusals (bootstrap, signature, update-check code,
+    key constant, wrong files).
+  - `ui`: the result card of `docs/index.html` (and its "Install it on a Model:Samples" button) and the "Install a
+    Cycles OS" tab, against a minimal DOM stand-in.
 - `firmware/`: local test files, git-ignored. Never commit Elektron firmware.
 
 The page holds no Elektron bytes and no key, only SHA-256 fingerprints of the official OS 1.13 parts. The Samples

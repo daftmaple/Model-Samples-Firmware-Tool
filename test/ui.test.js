@@ -15,6 +15,7 @@ class Node {
   prepend(c) { this.children.unshift(c); }
   addEventListener(t, f) { this.listeners[t] = f; }
   replaceWith() {} remove() {} setAttribute() {} select() {}
+  querySelector() { return (this._q ||= new Node("span")); }
   get classList() { return { add() {}, remove() {}, toggle() {} }; }
   toggle(open) { this.open = open; if (this.listeners.toggle) this.listeners.toggle(); }
   all(pred, out = []) { for (const c of this.children) { if (c instanceof Node) { if (pred(c)) out.push(c); c.all(pred, out); } } return out; }
@@ -144,4 +145,115 @@ test("the key-fix button appears only for a fixable missing key fix", () => {
   assert.equal(first(n), "Copy report");
   const f = result({ verdict: "fail" }); f.facts.canFixKey = true;
   assert.equal(first(f), "Copy report");
+});
+
+// ---- "Install a Cycles OS" tab (docs/install.js, on docs/usb.js) ---------------------------------------------------
+function loadInstall() {
+  const ids = {}, saved = [];
+  const document = {
+    readyState: "complete", createTextNode: text, getElementById: (id) => (ids[id] ||= new Node("div")),
+    createElement: (t) => { const n = new Node(t); if (t === "a") n.click = () => saved.push(n.download); return n; },
+  };
+  const location = { hash: "" };
+  const window = { SamplesSanity: S, MCFlasher: {}, addEventListener() {}, isSecureContext: false };
+  const URL = { createObjectURL: () => "blob:x", revokeObjectURL() {} };
+  for (const f of ["usb.js", "install.js"])
+    new Function("window", "document", "navigator", "location", "URL", "Blob", "setTimeout", fs.readFileSync(path.join(SITE, f), "utf8"))(
+      window, document, {}, location, URL, function () {}, (fn) => fn());
+  return { I: window.SamplesInstall, ids, saved, location, window };
+}
+const file = (name, bytes) => ({ name, arrayBuffer: async () => bytes });
+const click = (ids, id) => ids[id].onclick();
+
+test("install tab: output names drop the old suffixes", () => {
+  const { I } = loadInstall();
+  assert.equal(I.baseName("Supermodel_3.06_for-samples_smp-os.syx"), "Supermodel_3.06");
+  assert.equal(I.baseName("Supermodel_Full_2.64_for-samples_cyc-os_pre-fix_rewrapped.syx"), "Supermodel_Full_2.64");
+  assert.equal(I.baseName("my-mods.syx"), "my-mods");
+  assert.equal(I.baseName("modded-cycles-techno-edition_model-samples.syx"), "modded-cycles-techno-edition");
+});
+
+test("install tab: same three steps as Back to Samples OS; one file per OS, sent or downloaded", async (t) => {
+  const { firmware } = require("./helpers.js");
+  const cyc = firmware("model-cycles_OS1.13.syx"), smp = firmware("model-samples_OS1.13.syx");
+  if (!cyc || !smp) { t.skip("firmware/ lacks the official OS files"); return; }
+  const { I, ids, saved, location, window } = loadInstall();
+  assert.equal(ids["in-files"].hidden, true, "files come after choosing the OS");
+  assert.equal(ids["in-steps"].byClass("step").length, 0);
+
+  click(ids, "in-mode-samples");
+  assert.equal(ids["in-files"].hidden, false);
+  await I.addFiles([file("model-samples_OS1.13.syx", smp)]);
+  assert.equal(I.state.result, null);
+  assert.match(ids["in-need"].textContent, /needed/);
+  let card = ids["in-steps"].byClass("step")[0];
+  assert.match(card.className, /off/);
+  assert.match(card.textContent, /Add both files first/);
+
+  await I.addFiles([file("model-cycles_OS1.13.syx", cyc)]);
+  assert.equal(I.state.error, null);
+  assert.match(ids["in-log"].textContent, /Packed the stock Model:Cycles OS 1\.13/);
+  card = ids["in-steps"].byClass("step")[0];
+  assert.match(card.textContent, /smp-os/);
+  assert.match(card.textContent, /answers as Model:Samples/);
+  const [go, dl, ck] = card.byClass("btns")[0].children;
+  assert.equal(go.textContent, "Send over USB");
+  assert.equal(go.disabled, true, "no MIDI yet");
+  dl.onclick();
+  click(ids, "in-mode-cycles");
+  ids["in-steps"].byClass("step")[0].byClass("btns")[0].children[1].onclick();
+  assert.deepEqual(saved, ["model-cycles_OS1.13_for-samples_smp-os.syx", "model-cycles_OS1.13_for-samples_cyc-os.syx"]);
+
+  let shown = null;
+  window.SamplesCheck = { show: (name, raw) => { shown = { name, raw }; } };
+  ids["in-steps"].byClass("step")[0].byClass("btns")[0].children[2].onclick();
+  assert.equal(location.hash, "#check");
+  assert.equal(shown.name, "model-cycles_OS1.13_for-samples_cyc-os.syx");
+  assert.equal(S.check(shown.raw).verdict, "safe");
+
+  await I.load("bad.syx", cyc.subarray(0, 4000));          // from the Check a file tab
+  assert.match(ids["in-log"].textContent, /bad\.syx: not packed\. /);
+  assert.equal(ids["in-steps"].byClass("step")[0].byClass("btns")[0].children[1].disabled, true);
+});
+
+test("install tab: the machine that answers must run the OS chosen in step 1", () => {
+  const { I } = loadInstall();
+  const step = (mode) => { I.state.mode = mode; return I.steps()[0]; };
+  I.usb.dev = null;
+  assert.match(I.devProblem(step("samples")), /Connect MIDI/);
+  I.usb.dev = { state: "busy" };
+  assert.match(I.devProblem(step("samples")), /in use/);
+  I.usb.dev = { state: "ok", product: 0x0f, name: "x" };
+  assert.equal(I.devProblem(step("samples")), null);
+  assert.match(I.devProblem(step("cycles")), /answers as a Model:Samples.*Its own Model:Samples OS/);
+  I.usb.dev.product = 0x11;
+  assert.equal(I.devProblem(step("cycles")), null);
+  assert.match(I.devProblem(step("samples")), /answers as a Model:Cycles.*key fix/);
+  assert.match(step("cycles").refused, /Upgrade Failed.*no key fix/);
+  assert.match(step("cycles").note, /STARTUP MENU .*ignores this file/);
+  assert.match(step("samples").sub, /STARTUP MENU/);
+});
+
+test("check result: “Install it on a Model:Samples” only for a Cycles OS, and it opens the install tab with the file", () => {
+  const calls = [];
+  const html = fs.readFileSync(path.join(SITE, "index.html"), "utf8");
+  const src = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((x) => x.includes("function render(r)"));
+  const ids = {}, location = { hash: "" };
+  const g = {
+    document: { createElement: (t) => new Node(t), createTextNode: text, getElementById: (id) => (ids[id] ||= new Node("div")), body: new Node("body") },
+    window: { SamplesSanity: S, addEventListener() {}, scrollTo() {}, SamplesInstall: { load: (n, raw) => calls.push(n) } },
+  };
+  const hooked = src.replace("function render(r) {", "window.__render = render; function render(r) {");
+  new Function("document", "window", "navigator", "URL", "Blob", "location", hooked)(g.document, g.window, {}, {}, function () {}, location);
+  const r2 = g.window.__render;
+  const btn = (box) => box.byClass("primary").find((b) => /Install it/.test(b.textContent));
+
+  assert.equal(btn(r2(result({ verdict: "safe", raw: new Uint8Array(1) }))), undefined, "not for the Samples OS");
+  const cycBox = r2(result({ verdict: "critical", raw: new Uint8Array(1), facts: { ...result().facts, routes: undefined, cyclesContainer: true, fileName: "mods.syx" } }));
+  btn(cycBox).onclick();
+  assert.deepEqual(calls, ["mods.syx"]);
+  assert.equal(location.hash, "#install");
+  btn(r2(result({ verdict: "safe", raw: new Uint8Array(1), facts: { ...result().facts, os: "cycles", transport: "cycles" } }))).onclick();
+  assert.equal(location.hash, "#install-cycles");
+  assert.equal(typeof g.window.SamplesCheck.show, "function");
 });

@@ -1,4 +1,4 @@
-/* Model:Samples firmware sanity check — pure logic, no DOM.
+/* Model:Samples Firmware Tool — file check and packing, pure logic, no DOM.
  *
  * Checks a .syx meant to install a custom (Cycles-based) OS on an Elektron Model:Samples:
  *   - the SysEx transport is well formed (every packet checksum, sequence, 7-bit bytes);
@@ -398,9 +398,10 @@ function check(raw, fileName) {
   let isCyclesContainer = false;
   if (hdrSha === REF.samplesHeader) add(G2, "pass", "Container header = official Model:Samples OS 1.13", `Product byte 0x${blob[7].toString(16)}, version ${ver}.`);
   else if (hdrSha === REF.cyclesHeader) {
-    isCyclesContainer = true;
+    isCyclesContainer = facts.cyclesContainer = true;
     add(G2, "critical", "This is a Model:Cycles container, not a Model:Samples one",
-      "Header, bootstrap and signature are the Model:Cycles'. A Cycles OS for a Model:Samples must be packed in the official Model:Samples container (Modded-Cycles: Mods tab → machine Model:Samples, or tools/mods_for_samples.py).");
+      "Header, bootstrap and signature are the Model:Cycles'. A Cycles OS for a Model:Samples must be packed in the official Model:Samples container (Modded-Cycles: Mods tab → machine Model:Samples, or tools/mods_for_samples.py). The “Install a Cycles OS” tab packs this file for you, with the official model-samples_OS1.13.syx, and sends it.");
+    checks[checks.length - 1].link = { href: "#install", text: "Install a Cycles OS: pack this file for the Model:Samples" };
   } else add(G2, "critical", "Container header differs from the official Model:Samples OS 1.13",
     `Product byte 0x${blob[7].toString(16)}, version text "${ver}", ${be32(blob, 0x1c)} section(s). Only section 3 may change.`);
 
@@ -600,12 +601,13 @@ function check(raw, fileName) {
  *  - the STARTUP MENU (Samples bootstrap) listens on MIDI IN only, takes product 0x0F, checks with the Samples key. */
 function routes(f) {
   const smp = f.transport === "samples";
+  const usb = f.os === "cycles" ? "USB: the Install a Cycles OS tab, Elektron Transfer or any SysEx tool" : "USB: Elektron Transfer or the web flasher";
   const R = [];
-  R.push({ where: "Model:Samples on its own Model:Samples OS", how: "USB: Elektron Transfer or the web flasher",
+  R.push({ where: "Model:Samples on its own Model:Samples OS", how: usb,
     ok: smp ? "yes" : "no",
     why: smp ? "The Samples OS takes the Model:Samples transport and the Samples signature." : "Ignored: the Samples OS only takes the Model:Samples transport (0x0F). Use the smp-os version." });
   R.push({ where: "Model:Samples already on a Cycles OS with the key fix (Modded-Cycles or a Modded-Cycles derivative; Transfer shows it as Model:Cycles)",
-    how: "USB: Elektron Transfer or the web flasher", ok: smp ? "no" : "yes",
+    how: usb, ok: smp ? "no" : "yes",
     why: smp ? "Ignored: a Cycles OS only takes the Model:Cycles transport (0x11). Use the cyc-os version, or the STARTUP MENU." : "The Cycles OS takes the 0x11 transport, and the key fix lets it accept the Samples signature. This is how to change mods later." });
   R.push({ where: "Model:Samples on a Cycles OS WITHOUT the key fix (e.g. an elektron-firmware-tool cross-flash)",
     how: "USB", ok: "no",
@@ -752,6 +754,95 @@ function fixKey(raw) {
     throw new Error("the fixed file does not check as safe");
   return out;
 }
+/* Pack a modded Model:Cycles OS for the Model:Samples, from a Model:Cycles .syx (Modded-Cycles or a derivative, built for
+ * a real Model:Cycles) and the official model-samples_OS1.13.syx. The same file Modded-Cycles' modsForSamples builds
+ * (tools/mods_for_samples.py, notes/57), without needing the official Model:Cycles OS: the Cycles key is derived from the
+ * file's own bootstrap once it matches the official fingerprint, and checks the file's signature.
+ *  - Model:Cycles container: section 3 goes into the official Samples container, its 32-byte key constant recomputed for
+ *    the Samples key (only those bytes change), signed with the Samples key from the official file's bootstrap.
+ *  - A file already packed for the Model:Samples: kept as it is (the key fix added when missing, as fixKey()).
+ * Returns both transports, with 21-bit packet numbers, each checked again and refused unless "safe":
+ *   { smp: 0x0F file, cyc: 0x11 file, from: "cycles" | "samples", stock, keyFixAdded, mainSha }. Throws with the reason. */
+function forSamples(modRaw, smpRaw) {
+  modRaw = modRaw instanceof Uint8Array ? modRaw : new Uint8Array(modRaw);
+  smpRaw = smpRaw instanceof Uint8Array ? smpRaw : new Uint8Array(smpRaw);
+  if (hex(sha256(smpRaw)) !== REF.samplesSyx) throw new Error("the Model:Samples file must be the official model-samples_OS1.13.syx from elektron.se");
+  const B = builder();
+  const pre = check(modRaw);
+  if (pre.facts.sha256 === REF.samplesSyx) throw new Error("this is the official Model:Samples OS, not a Model:Cycles OS");
+  if (pre.facts.sha256 === REF.samplesOnCyclesSyx) throw new Error("this is the “Model:Cycles → Samples OS” way-back file, not a Model:Cycles OS");
+  const bad = pre.checks.find((c) => c.group === "SysEx transport" && RANK[c.status] >= RANK.fail);
+  if (bad) throw new Error(bad.title + (bad.detail ? ": " + bad.detail : ""));
+  const smp = decode(smpRaw), mod = decode(modRaw);
+  const both = (stream, mainSha, extra) => {
+    const out = {};
+    for (const [k, prod, start] of [["smp", 0x0f, smp.start], ["cyc", 0x11, mod.prod === 0x11 ? mod.start : smp.start]]) {
+      const raw = rewrap(B.wrap(stream, prod, start));
+      const r = check(raw);
+      if (r.verdict !== "safe" || r.facts.keyfix !== true || r.facts.transport !== (prod === 0x11 ? "cycles" : "samples") || r.facts.mainSha !== mainSha)
+        throw new Error(`the ${k}-os result does not check as safe (` + (r.checks.filter((c) => RANK[c.status] >= RANK.warn).map((c) => c.title).join("; ") || r.verdict) + ")");
+      out[k] = raw;
+    }
+    return Object.assign(out, { mainSha }, extra);
+  };
+
+  // Already packed for the Model:Samples: same container, other transport (and the key fix if it lacks it)
+  const blob0 = mod.stream.subarray(8, 8 + be32(mod.stream, 0));
+  if (blob0.length >= 0x20 && hex(sha256(blob0.subarray(0, 0x20))) === REF.samplesHeader) {
+    if (pre.facts.os === "samples") throw new Error("this is the Model:Samples OS, not a Model:Cycles OS");
+    const issue = pre.checks.find((c) => RANK[c.status] >= RANK.fail);
+    if (issue) throw new Error(`this file is already packed for the Model:Samples, but it does not check out (${issue.title}): see the Check a file tab`);
+    if (pre.facts.os !== "cycles") throw new Error("the OS in this Model:Samples file is not recognised as a Model:Cycles OS 1.13");
+    let raw = modRaw, keyFixAdded = false;
+    if (pre.facts.keyfix === false) {
+      if (!pre.facts.canFixKey) throw new Error("its OS update-check code is modified, so the key fix cannot be added");
+      raw = fixKey(modRaw); keyFixAdded = true;
+    }
+    const r = check(raw);
+    return both(decode(raw).stream, r.facts.mainSha, { from: "samples", stock: !!r.facts.cyclesStock, keyFixAdded });
+  }
+
+  // A Model:Cycles container: every part but section 3 must be Elektron's Model:Cycles OS 1.13
+  if (mod.prod !== 0x11) throw new Error("not a Model:Cycles file (transport 0x" + mod.prod.toString(16) + ")");
+  let c;
+  try { c = B.parseContainer(mod.stream); } catch (e) { throw new Error("no firmware container: " + e.message); }
+  if (hex(sha256(c.blob.subarray(0, 0x20))) !== REF.cyclesHeader) throw new Error("not a Model:Cycles OS 1.13 container (header differs from Elektron's)");
+  const want = [[5, 0x00000000, REF.cyclesMeta, "meta"], [2, 0x04000000, REF.cyclesBootstrap, "bootstrap"], [3, 0x40000400, null, "MAIN OS"],
+    [4, 0x80000400, REF.samplesSections.find((s) => s.id === 4).sha, "updater"]];
+  if (c.sections.length !== want.length || c.sections.some((s, k) => s.id !== want[k][0] || s.attr !== want[k][1]))
+    throw new Error("section table differs from the official Model:Cycles OS 1.13");
+  const stored = (id) => { const s = c.sections.find((x) => x.id === id); return c.blob.subarray(s.off, s.off + s.size); };
+  for (const [id, , sha, name] of want)
+    if (sha && hex(sha256(stored(id))) !== sha) throw new Error(`section ${id} (${name}) is not Elektron's Model:Cycles OS 1.13 ${name}: only the OS may change`);
+  if (be32(mod.stream, 4) !== B.contentChecksum(c.blob)) throw new Error("content checksum mismatch: the file is damaged");
+  const body = c.blob.subarray(0, c.blob.length - 32), digest = c.blob.subarray(c.blob.length - 32);
+  const cKey = B.findKey([depack(stored(2), null).data], body, digest);
+  if (!cKey) throw new Error("the signature does not check with the Model:Cycles key: the file is damaged or was changed after it was built");
+
+  let main, ops;
+  try { ({ data: main, ops } = B.aplibDepack(stored(3))); } catch (e) { throw new Error("the MAIN OS does not unpack: " + e.message); }
+  const at = (va, n) => (va - MAIN_BASE + n <= main.length ? main.subarray(va - MAIN_BASE, va - MAIN_BASE + n) : null);
+  const changed = REF.cyclesCheckRegions.filter((r) => { const b = at(r.from, r.to - r.from); return !b || hex(sha256(b)) !== r.sha; });
+  if (changed.length) throw new Error("not a Model:Cycles OS 1.13, or its update-check code is modified (" + changed.map((r) => r.what).join(", ") + "): the key fix cannot be applied safely");
+  const text = at(CYC_KEY_STR, 11), co = CYC_KEY_CONST - MAIN_BASE;
+  if (!eq(deriveKey(text, main.subarray(co, co + 32)), cKey)) throw new Error("the OS's own update key is not the Model:Cycles key: it was changed by this build");
+
+  const sc = B.parseContainer(smp.stream);
+  const sStored = (id) => { const s = sc.sections.find((x) => x.id === id); return sc.blob.subarray(s.off, s.off + s.size); };
+  const sKey = B.findKey([depack(sStored(2), null).data], sc.blob.subarray(0, sc.blob.length - 32), sc.blob.subarray(sc.blob.length - 32));
+  if (!sKey) throw new Error("Model:Samples key not found");
+  const h = sha256(text), hr = sha256(Uint8Array.from(text).reverse());
+  const patched = Uint8Array.from(main), dirty = new Uint8Array(main.length);
+  for (let i = 0; i < 32; i++) { patched[co + i] = sKey[i] ^ h[i] ^ hr[i]; dirty[co + i] = 1; }
+  const s3 = B.aplibRepack(patched, ops, dirty);
+  if (!eq(depack(s3, null).data, patched)) throw new Error("re-packed MAIN OS reads back differently");
+  const blob = B.rebuildContainer(sc, { 3: s3 }, sKey);
+  if (blob.length > CONTAINER_MAX) throw new Error(`the container would be ${fmt(blob.length)} bytes, too big for the Model:Samples flash (max ${fmt(CONTAINER_MAX)})`);
+  const z = Uint8Array.from(main); z.fill(0, co, co + 32);
+  return both(B.buildStream(blob, BYTES_PER_MSG), hex(sha256(patched)),
+    { from: "cycles", stock: hex(sha256(z)) === REF.cyclesMainNoKey, keyFixAdded: true });
+}
+
 function builder() {
   const B = (root && root.MCBuilder) || (typeof require === "function" ? require("./vendor/modded-cycles/builder.js") : null);
   if (!B) throw new Error("Modded-Cycles builder not loaded");
@@ -775,7 +866,7 @@ function report(r) {
   const V = { safe: "SAFE: only the OS (section 3) differs from Elektron's Model:Samples firmware",
     warn: "FLASHABLE WITH CAVEATS", fail: "DO NOT FLASH: the device would refuse it or not boot",
     critical: "DO NOT FLASH: touches the bootstrap / recovery path (brick risk)" };
-  L.push(`Model:Samples firmware sanity check (Beta, still under testing)`);
+  L.push(`Model:Samples Firmware Tool: file check (Beta, still under testing)`);
   L.push(`File: ${r.facts.fileName}  (${fmt(r.facts.size)} bytes)`);
   L.push(`SHA-256: ${r.facts.sha256}`);
   if (r.facts.known) L.push(`Known file: ${r.facts.known}`);
@@ -793,7 +884,7 @@ function report(r) {
   return L.join("\n");
 }
 
-const API = { check, report, rewrap, fixKey, sha256, hmacSha256, hex, REF };
+const API = { check, report, rewrap, fixKey, forSamples, sha256, hmacSha256, hex, REF };
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 if (typeof window !== "undefined") window.SamplesSanity = API;
 })(this);
