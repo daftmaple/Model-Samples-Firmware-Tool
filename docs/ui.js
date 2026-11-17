@@ -52,5 +52,20 @@ function stepState(id, state) {
   if (h) h.dataset.state = state;
 }
 
-window.SamplesUI = { $, el, kb, save, dropZone, needList, renderLog, stepState };
+/* One file to download for a SysEx tool: its name, where it can be sent, a status line and a Download button. */
+function downloadRow({ name, where, meta, ready, onDownload }) {
+  const r = el("div", "step" + (ready ? "" : " off"));
+  r.append(el("h4", "mono", name));
+  r.append(el("p", "sub", where));
+  if (meta) r.append(el("p", "meta", meta));
+  const row = el("div", "btns");
+  const dl = el("button", "primary", "Download .syx");
+  dl.disabled = !ready;
+  dl.onclick = onDownload;
+  row.append(dl);
+  r.append(row);
+  return r;
+}
+
+window.SamplesUI = { $, el, kb, save, dropZone, needList, renderLog, stepState, downloadRow };
 })();

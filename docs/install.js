@@ -114,20 +114,7 @@ function detected() {
     : "It runs a Cycles OS: with the key fix, pick “A Cycles OS with the key fix” in step 1; without it, go back to the Samples OS first with the Back to Samples OS tab.";
 }
 
-/* One file to download, for a SysEx tool. */
-function downloadRow(s, ready) {
-  const r = el("div", "step" + (ready ? "" : " off"));
-  r.append(el("h4", "mono", s.name));
-  r.append(el("p", "sub", s.where));
-  r.append(el("p", "meta", st.busy ? "Packing and checking…" : ready ? kb(st.result[s.key].length) : "Add both files in step 2 first."));
-  const row = el("div", "btns");
-  const dl = el("button", "primary", "Download .syx");
-  dl.disabled = !ready;
-  dl.onclick = () => download(s);
-  row.append(dl);
-  r.append(row);
-  return r;
-}
+
 
 // ---- rendering --------------------------------------------------------------------------------------------------
 function log(msg, kind) { st.log.push({ msg, kind: kind || "" }); }
@@ -159,7 +146,8 @@ function render() {
       send: () => send(s),
       connectHint: "Connect above to send it over USB.",
     }));
-    dls.append(downloadRow(s, ready));
+    dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s),
+      meta: st.busy ? "Packing and checking…" : ready ? kb(st.result[s.key].length) : "Add both files in step 2 first." }));
   }
 
   usb.renderBar();

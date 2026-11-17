@@ -33,8 +33,8 @@ Two warnings come with a corrected file, from one "Download the fixed .syx" butt
 
 **Install a Cycles OS.** Installs a modded Model:Cycles OS built for a real Model:Cycles (Modded-Cycles or a
 Modded-Cycles derivative) on a Model:Samples, from that `.syx` and the official `model-samples_OS1.13.syx`. Laid out like
-"Back to Samples OS", in a different order: (1) which OS the Model:Samples runs now, (2) your files, (3) connect and
-send over USB (the machine's answer is compared with step 1), or (4) download the file for a SysEx tool. It builds
+"Back to Samples OS": (1) which OS the Model:Samples runs now, (2) your files, (3) connect and send over USB (the
+machine's answer is compared with step 1), or (4) download the file for a SysEx tool. It builds
 the same file as Modded-Cycles' `mods_for_samples.py` / `modsForSamples`: the OS (section 3) in the official Samples
 container, with the 32-byte key fix (only those bytes change), signed with the Samples key. The official Model:Cycles
 OS is not needed. The Model:Cycles key comes from the file's own bootstrap after it matches Elektron's fingerprint, and
@@ -84,6 +84,11 @@ tab.
 
   So *Send over USB* for *Model:Cycles → Samples OS* waits for a ticked "this is a Model:Samples" box; the first way
   needs no such check. Downloading the file is never blocked.
+
+The tab runs in the same order as "Install a Cycles OS": (1) how the Cycles OS was installed, (2) the official OS
+files, (3) connect and send over USB, or (4) download the files for a SysEx tool. With a MIDI interface, the files can
+be skipped: from the STARTUP MENU, the official `model-samples_OS1.13.syx` goes in as it is over MIDI IN (not over USB,
+where a Cycles OS ignores it).
 
 Files are built in the browser and refused unless they match Modded-Cycles' reference SHA-256. They are sent with
 its fast USB method (Web MIDI: Chrome, Edge or Opera, over https or `python3 -m http.server`, not `file://`), or

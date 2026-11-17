@@ -110,11 +110,11 @@
       <div id="in-download" hidden>
         <h2 class="step-h step-alt" id="in-h-download">Or download it for a <a href="#help-sysex" target="_blank" rel="noopener">SysEx tool</a></h2>
         <p class="hint">No Web MIDI here, or you prefer your own tool? Download the packed file and send it yourself.</p>
-        <div id="in-dl"></div>
+        <div class="dl-list" id="in-dl"></div>
         <p class="note-recovery"><strong>Recovering a machine that does not start?</strong> You do not need this file: from the STARTUP MENU, send the official <span class="mono">model-samples_OS1.13.syx</span> directly. See <a href="#help-recovery" target="_blank" rel="noopener">recovery</a>.</p>
       </div>
 
-      <div id="in-activity">
+      <div class="activity">
         <h3 class="sec-h">Activity</h3>
         <ul class="log" id="in-log" aria-live="polite"></ul>
       </div>
@@ -140,15 +140,6 @@
     </div>
 
     <div class="flow">
-      <h2 class="step-h" id="rv-h-connect">Connect the Model:Samples</h2>
-      <p class="hint">Plug it in by USB, switch it on, and press Connect. The page checks that it runs a Cycles OS.</p>
-      <div class="midi">
-        <button id="rv-connect">Connect</button>
-        <select id="rv-port" disabled aria-label="MIDI port"></select>
-        <span id="rv-dev" class="dev" aria-live="polite"></span>
-      </div>
-      <p class="detect" id="rv-detect" aria-live="polite"></p>
-
       <h2 class="step-h" id="rv-h-mode">How was the Cycles OS installed?</h2>
       <div class="modes">
         <button class="mode" id="rv-mode-fixed" aria-pressed="false">
@@ -173,15 +164,29 @@
       </div>
 
       <div id="rv-send" hidden>
-        <h2 class="step-h" id="rv-h-send">Send it, or download it</h2>
+        <h2 class="step-h" id="rv-h-send">Connect and send over USB</h2>
+        <p class="hint">Plug the Model:Samples in by USB, switch it on, and press Connect. The page checks that it runs a Cycles OS before sending.</p>
+        <div class="midi">
+          <button id="rv-connect">Connect</button>
+          <select id="rv-port" disabled aria-label="MIDI port"></select>
+          <span id="rv-dev" class="dev" aria-live="polite"></span>
+        </div>
+        <p class="detect" id="rv-detect" aria-live="polite"></p>
         <label class="confirm" id="rv-confirm" hidden><input type="checkbox" id="rv-is-samples"> This machine is a <strong>Model:Samples</strong> (it says so on the front panel). A real Model:Cycles answers the same way over USB and would also accept the first file, switching itself to the Samples OS.</label>
         <div id="rv-steps"></div>
         <div class="progress" id="rv-progress" role="progressbar" aria-label="Sending" aria-valuemin="0" aria-valuemax="100" hidden><span></span></div>
+      </div>
+
+      <div id="rv-download" hidden>
+        <h2 class="step-h step-alt" id="rv-h-download">Or download it for a <a href="#help-sysex" target="_blank" rel="noopener">SysEx tool</a></h2>
+        <p class="hint">No Web MIDI here, or you prefer your own tool? Download the files and send them yourself.</p>
+        <div class="dl-list" id="rv-dl"></div>
+        <p class="note-recovery"><strong>Have a MIDI interface?</strong> You can skip these files: from the STARTUP MENU (hold FUNC while switching on, then TRIG 4), send the official <span class="mono">model-samples_OS1.13.syx</span> you already have directly with a SysEx tool, over MIDI IN. It works whatever OS is installed, but not over USB: a Cycles OS ignores that file. See <a href="#help-recovery" target="_blank" rel="noopener">recovery</a>.</p>
+      </div>
+
+      <div class="activity">
+        <h3 class="sec-h">Activity</h3>
         <ul class="log" id="rv-log" aria-live="polite"></ul>
-        <ul class="hint">
-          <li><strong>This browser cannot send?</strong> (no Web MIDI) Download the file and send it over USB with a <a href="#help-sysex" target="_blank" rel="noopener">SysEx tool</a>.</li>
-          <li><strong>The machine refuses every file, or does not start?</strong> Use the <a href="#help-recovery" target="_blank" rel="noopener">STARTUP MENU</a> over MIDI IN, which always works.</li>
-        </ul>
       </div>
     </div>
 

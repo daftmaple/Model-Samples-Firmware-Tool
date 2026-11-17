@@ -280,6 +280,15 @@ test("back tab: two ways, the files each needs, and the Model:Samples box for th
   assert.equal(cards.length, 2);
   assert.ok(cards.every((c) => /off/.test(c.className)), "no files yet");
   assert.match(cards[1].byClass("note")[0].textContent, /Skip this/);
+  assert.ok(cards.every((c) => c.byClass("btns")[0].children.map((x) => x.textContent).join() === "Send over USB"),
+    "downloading is its own section");
+  const rows = ids["rv-dl"].byClass("step");
+  assert.deepEqual(rows.map((r) => r.byClass("mono")[0].textContent),
+    ["model-samples_OS1.13_for-model-cycles.syx", "model-samples_OS1.13.syx"]);
+  assert.match(rows[0].textContent, /Only to a Model:Samples/);
+  assert.match(rows[1].textContent, /unchanged/);
+  assert.ok(rows.every((r) => r.byClass("btns")[0].children[0].disabled), "no files yet");
+  assert.equal(ids["rv-download"].hidden, false);
   R.usb.dev = { state: "ok", product: 0x0f, name: "x" };
   assert.match(R.devProblem(R.steps()[0]), /nothing to bring back/);
   assert.equal(R.devProblem(R.steps()[1]), null);

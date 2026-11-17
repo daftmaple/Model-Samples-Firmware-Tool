@@ -12,7 +12,8 @@
  * Files are built with Modded-Cycles' own builder (vendor/modded-cycles/builder.js) and refused unless their SHA-256
  * equals Modded-Cycles' references. Sending: usb.js (Modded-Cycles' fast USB method, after asking the machine who it is).
  *
- * Steps: 1. connect, 2. how the Cycles OS was installed, 3. official files, 4. send/download.
+ * Steps: 1. how the Cycles OS was installed, 2. official files, 3. connect and send over USB, 4. or download the files
+ * for a SysEx tool (or skip them: the official Samples OS goes straight in from the STARTUP MENU over MIDI IN).
  */
 (function () {
 "use strict";
@@ -32,6 +33,7 @@ function steps() {
   if (st.mode === "fixed") {
     return [{ id: "back", title: "Send the official Model:Samples OS, packed for the Cycles OS",
       sub: "Modded-Cycles “Model:Samples: back to its OS”. The machine answers as a Model:Cycles and restarts as a Model:Samples.",
+      where: "Send it with a SysEx tool over USB, while the Cycles OS with the key fix runs. Not from the STARTUP MENU.",
       needs: ["samples"], product: 0x11, name: "model-samples_OS1.13_back-from-cycles-os.syx",
       build: () => {
         const s = B.unwrap(smp);
@@ -44,6 +46,7 @@ function steps() {
     return [
       { id: "tocyc", title: "First: Model:Cycles → Samples OS",
         sub: "The Samples OS in the Model:Cycles container, signed with the Cycles key: the only thing a Cycles OS without the key fix accepts. The machine answers as a Model:Cycles and restarts as a Model:Samples.",
+        where: "Send it with a SysEx tool over USB, while the Cycles OS without the key fix runs. Not from the STARTUP MENU. Only to a Model:Samples: a real Model:Cycles would also take it and switch to the Samples OS.",
         needs: ["cycles", "samples"], product: 0x11, name: "model-samples_OS1.13_for-model-cycles.syx", confirmSamples: true,
         build: () => {
           const raw = B.crossflash(cyc, smp).raw;
@@ -53,6 +56,7 @@ function steps() {
       { id: "official", title: "Then, optionally: the official Model:Samples OS",
         sub: "After the first file the machine already runs the Model:Samples OS, but its flash still holds the Model:Cycles container (header, meta, a copy of the Cycles bootstrap, Cycles signature). Once it has restarted as a Model:Samples, send the official file, unchanged, so the flash ends exactly as after an Elektron update.",
         note: "Skip this if you are about to flash a custom smp-os build: it replaces the whole container anyway.",
+        where: "Your official file, unchanged. Once the machine has restarted as a Model:Samples, send it with a SysEx tool over USB.",
         needs: ["samples"], product: 0x0f, name: "model-samples_OS1.13.syx", build: () => smp },
     ];
   }
@@ -86,13 +90,13 @@ function devProblem(step) {
 
 function send(step) {
   if (step.confirmSamples && !$("rv-is-samples").checked) {
-    log("Tick “this is a Model:Samples” first: a real Model:Cycles would also accept this file and switch to the Samples OS.", "bad");
+    log("Tick “This machine is a Model:Samples” first: a real Model:Cycles would also accept this file and switch to the Samples OS.", "bad");
     render(); return;
   }
   let raw;
   try { raw = step.build(); } catch (e) { log(`${step.title}: ${e.message}`, "bad"); render(); return; }
   return usb.send(raw, { id: step.id, name: step.name, problem: () => devProblem(step),
-    refusedHint: "If it says “Upgrade Failed”, its OS does not take this file: try the other way back in step 2." });
+    refusedHint: "If it says “Upgrade Failed”, its OS does not take this file: try the other way back in step 1." });
 }
 
 function download(step) {
@@ -106,7 +110,7 @@ function download(step) {
 function detected() {
   const d = usb.dev;
   if (!d || d.state !== "ok" || !d.product) return "";
-  if (d.product === 0x11) return "It runs a Cycles OS. Tell step 2 how it was installed.";
+  if (d.product === 0x11) return "It runs a Cycles OS: ready for the way back chosen in step 1.";
   return st.mode === "unfixed"
     ? "It runs the Model:Samples OS. Just sent the first file? Then only the optional clean-up is left."
     : "It already runs its own Model:Samples OS: there is nothing to bring back.";
@@ -127,22 +131,24 @@ function render() {
   UI.needList($("rv-need"), ["samples", "cycles"].filter((k) => needs.has(k) || st.official[k]).map((k) => [st.official[k], LABEL[k]]));
   $("rv-files").hidden = !st.mode;
   $("rv-send").hidden = !st.mode;
+  $("rv-download").hidden = !st.mode;
   $("rv-confirm").hidden = st.mode !== "unfixed";
-  UI.stepState("rv-h-connect", usb.dev && usb.dev.state === "ok" ? "done" : "");
   UI.stepState("rv-h-mode", st.mode ? "done" : "");
   UI.stepState("rv-h-files", list.length && list.every((s) => s.needs.every((k) => st.official[k])) ? "done" : "");
 
-  const box = $("rv-steps");
-  box.textContent = "";
+  const box = $("rv-steps"), dls = $("rv-dl");
+  box.textContent = ""; dls.textContent = "";
   for (const s of list) {
     const ready = s.needs.every((k) => st.official[k]);
     box.append(usb.card(s, {
       ready,
-      meta: ready ? `${s.name} · goes to a machine that answers as ${DEV[s.product]}` : "Add the official file(s) in step 3 first.",
+      meta: ready ? `${s.name} · goes to a machine that answers as ${DEV[s.product]}` : "Add the official file(s) in step 2 first.",
       problem: () => devProblem(s),
       send: () => send(s),
-      download: () => download(s),
+      connectHint: "Connect above to send it over USB.",
     }));
+    dls.append(UI.downloadRow({ name: s.name, where: s.where, ready, onDownload: () => download(s),
+      meta: ready ? "" : "Add the official file(s) in step 2 first." }));
   }
 
   usb.renderBar();
