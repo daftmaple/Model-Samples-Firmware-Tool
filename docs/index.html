@@ -4,252 +4,126 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model:Samples Firmware Tool (Beta)</title>
-<meta name="description" content="Check a custom OS .syx before flashing it to an Elektron Model:Samples, pack a modded Model:Cycles OS for it, or bring it back to its own OS.">
-<style>
-:root {
-  --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1db;
-  --accent: #2f5bd3; --pass: #1f8a4c; --warn: #b7791f; --fail: #c2410c; --crit: #b91c1c;
-  --pass-bg: #e8f5ed; --warn-bg: #fdf3e1; --fail-bg: #fdece4; --crit-bg: #fde8e8; --info-bg: #eef2fb;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #141414; --panel: #1d1d1d; --ink: #ecebe7; --muted: #a09e98; --line: #2f2f2d;
-    --accent: #7c9cff; --pass: #4ec27f; --warn: #e3a948; --fail: #f08a54; --crit: #ff6b6b;
-    --pass-bg: #16291e; --warn-bg: #2d2416; --fail-bg: #2f1d14; --crit-bg: #331616; --info-bg: #1a2133;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #141414; --panel: #1d1d1d; --ink: #ecebe7; --muted: #a09e98; --line: #2f2f2d;
-  --accent: #7c9cff; --pass: #4ec27f; --warn: #e3a948; --fail: #f08a54; --crit: #ff6b6b;
-  --pass-bg: #16291e; --warn-bg: #2d2416; --fail-bg: #2f1d14; --crit-bg: #331616; --info-bg: #1a2133;
-}
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
-h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
-.lede { color: var(--muted); margin: 0 0 20px; max-width: 78ch; }
-.drop { display: block; border: 2px dashed var(--line); border-radius: 12px; background: var(--panel);
-  padding: 36px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
-.drop:hover, .drop.over { border-color: var(--accent); }
-.drop strong { display: block; font-size: 17px; margin-bottom: 4px; }
-.drop span { color: var(--muted); font-size: 14px; }
-.drop input { display: none; }
-.privacy { color: var(--muted); font-size: 13px; margin: 10px 2px 0; }
-.result { margin-top: 28px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.verdict { padding: 18px 20px; border-bottom: 1px solid var(--line); }
-.verdict h2 { margin: 0 0 4px; font-size: 19px; display: flex; gap: 10px; align-items: center; }
-.verdict p { margin: 4px 0 0; }
-.v-safe { background: var(--pass-bg); } .v-safe h2 { color: var(--pass); }
-.v-warn { background: var(--warn-bg); } .v-warn h2 { color: var(--warn); }
-.v-fail { background: var(--fail-bg); } .v-fail h2 { color: var(--fail); }
-.v-critical { background: var(--crit-bg); } .v-critical h2 { color: var(--crit); }
-.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 14px; }
-.facts dt { color: var(--muted); }
-.facts dd { margin: 0; overflow-wrap: anywhere; }
-.mono { font-family: var(--mono); font-size: 13px; }
-.sec-h { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 700; }
-.overview { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); border-bottom: 1px solid var(--line); }
-.overview > div { padding: 16px 20px; }
-.overview > div + div { border-left: 1px solid var(--line); }
-.route { border-top: 1px solid var(--line); }
-.route:first-of-type { border-top: 0; }
-.route summary { display: grid; grid-template-columns: 52px 1fr 14px; gap: 10px; align-items: start; padding: 7px 0; cursor: pointer; list-style: none; }
-.route summary::-webkit-details-marker { display: none; }
-.route summary::after, .gcard summary::after { content: "›"; color: var(--muted); font-size: 16px; line-height: 1; transition: transform .15s; justify-self: end; margin-top: 2px; }
-.route[open] summary::after, .gcard[open] summary::after { transform: rotate(90deg); }
-.route .badge { font-size: 12px; font-weight: 700; text-align: center; border-radius: 6px; padding: 1px 0; margin-top: 1px; }
-.r-yes .badge { background: var(--pass-bg); color: var(--pass); border: 1px solid var(--pass); }
-.r-no .badge { color: var(--muted); border: 1px solid var(--line); }
-.r-risky .badge { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); }
-.route .t { font-weight: 600; font-size: 14px; }
-.r-no .t { color: var(--muted); font-weight: 500; }
-.route .more { padding: 0 0 10px 62px; font-size: 13.5px; }
-.route .how { color: var(--ink); }
-.route .d { color: var(--muted); }
-.after { background: var(--info-bg); border-radius: 8px; padding: 10px 14px; margin-top: 14px; font-size: 14px; }
-.after p { margin: 4px 0; }
-.checks { padding: 16px 20px; }
-.checks-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-.checks-top .sec-h { margin: 0; }
-.tally { font-size: 13px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-button.link { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; }
-.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
-.gcard { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-.gcard summary { display: grid; grid-template-columns: 22px 1fr auto 14px; gap: 10px; align-items: center; padding: 10px 12px; cursor: pointer; list-style: none; }
-.gcard summary::-webkit-details-marker { display: none; }
-.gcard .gname { font-weight: 600; font-size: 14px; }
-.gcard .count { font-size: 12.5px; color: var(--muted); }
-.gcard.s-warn .count { color: var(--warn); } .gcard.s-fail .count { color: var(--fail); } .gcard.s-critical .count { color: var(--crit); }
-.gcard.s-warn { border-color: var(--warn); } .gcard.s-fail { border-color: var(--fail); } .gcard.s-critical { border-color: var(--crit); }
-.gcard .rows { padding: 0 12px 6px; border-top: 1px solid var(--line); }
-.ic { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
-  font-size: 12px; font-weight: 700; color: #fff; }
-.chk { display: grid; grid-template-columns: 20px 1fr; gap: 1px 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
-.chk:first-child { border-top: 0; }
-.chk .ic { width: 18px; height: 18px; font-size: 11px; margin-top: 1px; }
-.chk .t { font-weight: 550; }
-.chk .d { grid-column: 2; color: var(--muted); font-size: 13px; }
-.chk .go { grid-column: 2; font-size: 13.5px; font-weight: 600; margin-top: 2px; }
-.s-pass > .ic, .s-pass > summary > .ic { background: var(--pass); } .s-info > .ic, .s-info > summary > .ic { background: var(--accent); }
-.s-skip > .ic, .s-skip > summary > .ic { background: var(--muted); } .s-warn > .ic, .s-warn > summary > .ic { background: var(--warn); }
-.s-fail > .ic, .s-fail > summary > .ic { background: var(--fail); } .s-critical > .ic, .s-critical > summary > .ic { background: var(--crit); }
-.chk.s-critical .t { color: var(--crit); } .chk.s-fail .t { color: var(--fail); } .chk.s-warn .t { color: var(--warn); }
-.actions { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); flex-wrap: wrap; }
-.result + .result { margin-top: 20px; }
-button { font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line);
-  background: var(--panel); color: var(--ink); cursor: pointer; }
-button:hover { border-color: var(--accent); }
-.busy { padding: 20px; color: var(--muted); }
-details.about { margin-top: 36px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px 20px; }
-details.about summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
-details.about li { margin: 4px 0; }
-details.about p, details.about ul { color: var(--ink); }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin: 8px 0 14px; }
-.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; background: var(--c); }
-footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
-a { color: var(--accent); }
-.beta { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: middle; color: var(--warn); border: 1px solid var(--warn); border-radius: 6px; padding: 2px 7px; margin-left: 6px; }
-.beta-note { background: var(--warn-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 10px 0 0; }
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 14px 0 22px; }
-.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 9px 14px; color: var(--muted); font-weight: 600; }
-.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
-.callout { background: var(--warn-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; font-size: 14px; }
-.step-h { font-size: 17px; margin: 28px 0 10px; }
-.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.mode { text-align: left; padding: 14px 16px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
-.mode strong { font-size: 15px; }
-.mode > span { color: var(--muted); font-size: 13.5px; }
-.mode.on { border: 2px solid var(--accent); padding: 13px 15px; background: var(--info-bg); }
-.hint { color: var(--muted); font-size: 13.5px; margin: 10px 2px; }
-.credit { margin-top: 28px; padding: 12px 16px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--panel); font-size: 13.5px; }
-.credit p { margin: 0; }
-.drop.small { padding: 20px 16px; }
-.need { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.need li { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; background: var(--panel); }
-.need .badge { font-size: 12px; font-weight: 700; }
-.need .have .badge { color: var(--pass); } .need .missing .badge { color: var(--warn); }
-.midi { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
-.midi select { font: inherit; font-size: 14px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); max-width: 100%; }
-.dev { font-size: 13.5px; color: var(--muted); }
-.confirm { display: block; font-size: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 8px 0; }
-.step { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; }
-.step .btns { margin-top: auto; }
-#rv-steps, #in-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin: 10px 0; }
-.rv-flow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 0 28px; align-items: start; }
-.rv-flow .step-h { margin-top: 24px; }
-.step.off { opacity: .6; }
-.step h4 { margin: 0 0 4px; font-size: 15px; }
-.step .skip { margin: 4px 0 8px; padding: 8px 12px; background: var(--info-bg); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 14px; font-weight: 600; }
-.step .sub { margin: 0 0 6px; color: var(--muted); font-size: 14px; }
-.step .meta { margin: 0 0 10px; font-size: 13px; font-family: var(--mono); overflow-wrap: anywhere; }
-.step .why { margin: 8px 0 0; font-size: 13.5px; color: var(--warn); }
-.btns { display: flex; gap: 8px; flex-wrap: wrap; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-button:disabled { opacity: .45; cursor: not-allowed; }
-.progress { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0; }
-.progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-.log { list-style: none; padding: 0; margin: 8px 0; font-size: 13.5px; }
-.log li { padding: 3px 0; color: var(--muted); }
-.log li.ok { color: var(--pass); } .log li.bad { color: var(--fail); } .log li.warn { color: var(--warn); }
-@media (max-width: 820px) { .overview, .rv-flow { grid-template-columns: 1fr; } .overview > div + div { border-left: 0; border-top: 1px solid var(--line); } }
-@media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .modes { grid-template-columns: 1fr; } .route .more { padding-left: 0; } }
-@media (max-width: 560px) { .facts { grid-template-columns: 1fr; } .facts dt { margin-top: 6px; } h1 { font-size: 22px; } }
-</style>
+<meta name="description" content="Install a modded Model:Cycles OS on an Elektron Model:Samples, bring it back to its own OS, or check a custom OS .syx before flashing it.">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
   <h1>Model:Samples Firmware Tool <span class="beta">Beta</span></h1>
-  <div class="beta-note"><strong>Beta: still under testing.</strong> The checks are verified against real files and the official firmware, but the "Back to Samples OS" tab has only been tested against a simulated device, not yet on a real Model:Samples, and files from the "Install a Cycles OS" tab are byte-identical to Modded-Cycles' own builds but have not been sent from this page to a real machine yet. Keep the STARTUP MENU route (FUNC + power on, TRIG 4, official file over MIDI IN) at hand.</div>
-  <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="check">Check a file</button>
-    <button role="tab" data-tab="install">Install a Cycles OS</button>
-    <button role="tab" data-tab="revert">Back to Samples OS</button>
+  <details class="beta-note">
+    <summary><strong>Beta: still under testing.</strong> Keep the <a href="#help-recovery">recovery route</a> at hand.</summary>
+    <p>The checks are verified against real files and the official firmware. The "Back to Samples OS" tab has only been tested against a simulated device, not yet on a real Model:Samples. Files from the "Install a Cycles OS" tab are byte-identical to Modded-Cycles' own builds, but have not been sent from this page to a real machine yet.</p>
+  </details>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-start" aria-controls="tab-start" data-tab="start">Start</button>
+    <button role="tab" id="t-install" aria-controls="tab-install" data-tab="install">Install a Cycles OS</button>
+    <button role="tab" id="t-revert" aria-controls="tab-revert" data-tab="revert">Back to Samples OS</button>
+    <button role="tab" id="t-check" aria-controls="tab-check" data-tab="check">Check a file</button>
+    <button role="tab" id="t-help" aria-controls="tab-help" data-tab="help">Help &amp; recovery</button>
   </nav>
 
-  <section id="tab-check">
-  <p class="lede">Drop the <span class="mono">.syx</span> you are about to flash on a Model:Samples (for example, the Model:Cycles OS with mods). It checks that only the OS changes and that Elektron's bootstrap and startup menu, your recovery path, stay untouched.</p>
+  <!-- ============================================================ Start -->
+  <section id="tab-start" role="tabpanel" aria-labelledby="t-start">
+    <p class="lede">Put a modded Model:Cycles OS (Modded-Cycles or a derivative) on your Elektron Model:Samples, or bring it back to its own OS. Everything happens in this browser tab: nothing is uploaded.</p>
 
-  <label class="drop" id="drop">
-    <input type="file" id="file" accept=".syx,application/octet-stream" multiple>
-    <strong>Drop a .syx file here</strong>
-    <span>or click to choose one (several files at once are fine)</span>
-  </label>
-  <p class="privacy">Everything runs in your browser. The file is never uploaded.</p>
-
-  <div id="out"></div>
-
-  <details class="about">
-    <summary>What is checked, and why</summary>
-    <p>An OS update for the Model:Samples is a SysEx stream carrying an <em>ELE3 container</em> with four sections: meta (5), <strong>bootstrap</strong> (2, holds the STARTUP MENU), <strong>MAIN OS</strong> (3) and updater (4), signed with HMAC-SHA256. A custom OS should replace section 3 only.</p>
-    <ul>
-      <li><strong>SysEx transport</strong>: start/end markers, packet count, sequence, every packet checksum, no stray bytes. Product <span class="mono">0x0F</span> is the Samples' own transport. Product <span class="mono">0x11</span> is the transport for a Samples that already runs a Cycles OS installed for it.</li>
-      <li><strong>Container</strong>: content checksum, header and section table identical to the official Model:Samples OS 1.13, the same load addresses and bootstrap version, a valid layout, and a container small enough for flash (≤ 0x1c0000 bytes from 0x20000).</li>
-      <li><strong>Protected sections</strong>: bootstrap, updater and meta are compared with fingerprints of Elektron's own. A changed bootstrap is the one thing that can brick the device, so it is never accepted.</li>
-      <li><strong>Signature</strong>: valid with the Model:Samples key, which is derived from the file's own verified bootstrap. Otherwise the device refuses the file ("Upgrade Failed") and writes nothing.</li>
-      <li><strong>MAIN OS</strong>: unpacks without error. When the bootstrap unpacks it in place (input at 0x40200000, output from 0x40000400), the output never overtakes unread input. For a Model:Cycles OS, the update-check code must be intact and the 32-byte key fix must be present, so the official Samples OS can come back over USB.</li>
-    </ul>
-    <div class="legend">
-      <span style="--c: var(--pass)">pass</span><span style="--c: var(--warn)">warning: flashable, read it</span>
-      <span style="--c: var(--fail)">fail: refused or won't boot, recoverable</span><span style="--c: var(--crit)">critical: brick risk</span>
+    <h2 class="sec-h">What do you want to do?</h2>
+    <div class="start-grid">
+      <a class="task" href="#install">
+        <strong>Install mods on my Model:Samples</strong>
+        <span>You have a modded Model:Cycles OS (<span class="mono">.syx</span>) and want it on a Model:Samples, or you want to change the mods you already run.</span>
+        <em>Install a Cycles OS →</em>
+      </a>
+      <a class="task" href="#revert">
+        <strong>Go back to the stock Samples OS</strong>
+        <span>Your Model:Samples runs a Cycles OS and you want Elektron's own Model:Samples OS back.</span>
+        <em>Back to Samples OS →</em>
+      </a>
+      <a class="task" href="#check">
+        <strong>Check a .syx before flashing it</strong>
+        <span>Got a file from somewhere else? See whether it is safe, where it can be flashed, and what the machine accepts afterwards.</span>
+        <em>Check a file →</em>
+      </a>
+      <a class="task recovery" href="#help-recovery">
+        <strong>Something went wrong</strong>
+        <span>The machine does not start, or an update failed. The STARTUP MENU always brings it back.</span>
+        <em>Recovery steps →</em>
+      </a>
     </div>
-    <p>If an OS ever fails to boot, the STARTUP MENU still works: hold FUNC while powering on, press TRIG 4 (OS UPGRADE), and send the official <span class="mono">model-samples_OS1.13.syx</span> to the <strong>MIDI IN</strong> through a MIDI interface. USB does not work in that menu.</p>
-    <p>The page stores no Elektron firmware bytes and no key, only SHA-256 fingerprints of the official OS 1.13 parts. Format and rules come from <a href="https://github.com/18nelli18/Modded-Cycles">Modded-Cycles</a> (mtlib, mods_for_samples.py, notes 02/41/57) and the in-place boot layout from Supermodel (notes/41 §9).</p>
-  </details>
+
+    <div class="panel" id="start-need">
+      <h3>What you need</h3>
+      <ul>
+        <li><strong>A backup.</strong> Save your projects and samples with Elektron Transfer first.</li>
+        <li><strong>Chrome, Edge or Opera on a computer</strong>, to send files over USB (Web MIDI). In other browsers you can still build and download the files, then send them with Elektron Transfer.</li>
+        <li><strong>A USB cable</strong>, and Elektron Transfer and Overbridge closed while this page sends.</li>
+        <li><strong>The official OS 1.13 files</strong> from <a href="https://www.elektron.se/" rel="noopener">elektron.se</a> (Support &amp; Downloads): <span class="mono">model-samples_OS1.13.syx</span>, and for one of the ways back also <span class="mono">model-cycles_OS1.13.syx</span>. The page recognises them by their fingerprint.</li>
+      </ul>
+    </div>
   </section>
 
-  <section id="tab-install" hidden>
-    <p class="lede">Install a modded Model:Cycles OS on a Model:Samples over USB. Drop the file built for a real Model:Cycles (Modded-Cycles or a Modded-Cycles derivative) or one already packed for the Model:Samples. With your official <span class="mono">model-samples_OS1.13.syx</span>, the page packs it the way Modded-Cycles does: the same OS in the official Model:Samples container, with the 32-byte key fix, signed with the Model:Samples key. The result must then pass every check of the <a href="#check">Check a file</a> tab.</p>
+  <!-- ============================================================ Install -->
+  <section id="tab-install" role="tabpanel" aria-labelledby="t-install" hidden>
+    <p class="lede">Install a modded Model:Cycles OS on a Model:Samples. The page packs it the way Modded-Cycles does, checks the result, and sends it over USB or lets you download it.</p>
 
     <div class="callout">
-      <strong>Before you start:</strong> back up your projects and samples with Elektron Transfer. Close Elektron Transfer and Overbridge so this page can use the USB port.
+      <strong>Before you start:</strong> back up your projects and samples with Elektron Transfer, then close Transfer and Overbridge so this page can use the USB port.
     </div>
 
-    <h2 class="step-h">1. Which OS is on the Model:Samples now?</h2>
-    <div class="modes">
-      <button class="mode" id="in-mode-samples">
-        <strong>Its own Model:Samples OS, or flashing from the STARTUP MENU</strong>
-        <span>A first install, or after going back. Gets the <span class="mono">smp-os</span> file. Transfer shows the machine as Model:Samples. Also the one to pick for the STARTUP MENU (FUNC + power on) over MIDI IN with a SysEx tool, <em>whatever OS is installed</em>.</span>
-      </button>
-      <button class="mode" id="in-mode-cycles">
-        <strong>A Cycles OS with the key fix</strong>
-        <span>Installed with Modded-Cycles, a Modded-Cycles derivative or this page: changing mods. Gets the <span class="mono">cyc-os</span> file. Transfer shows the machine as Model:Cycles. <strong>Over USB only, while the Cycles OS runs:</strong> the STARTUP MENU ignores this file.</span>
-      </button>
-    </div>
-    <p class="hint">A Cycles OS <em>without</em> the key fix (for example an elektron-firmware-tool cross-flash) takes neither file over USB. Go back first with the <a href="#revert-unfixed">Back to Samples OS</a> tab (second way), then pick “Its own Model:Samples OS”. Not sure which you have? The machine tells you once MIDI is connected in step 3.</p>
-
-    <div class="rv-flow">
-    <div id="in-files" hidden>
-      <h2 class="step-h">2. Your files</h2>
-      <label class="drop small" id="in-drop">
-        <input type="file" id="in-file" accept=".syx,application/octet-stream" multiple>
-        <strong>Drop both .syx files here</strong>
-        <span>Your Cycles OS, and the official <span class="mono">model-samples_OS1.13.syx</span> from elektron.se (recognised by its SHA-256). Nothing is uploaded.</span>
-      </label>
-      <ul class="need" id="in-need"></ul>
-    </div>
-
-    <div id="in-send" hidden>
-      <h2 class="step-h">3. Send it</h2>
-      <div class="midi">
-        <button id="in-connect">Connect MIDI</button>
-        <select id="in-port" disabled aria-label="MIDI output"></select>
-        <span id="in-dev" class="dev"></span>
+    <div class="flow">
+      <h2 class="step-h" id="in-h-mode">Which OS does it run now?</h2>
+      <div class="modes">
+        <button class="mode" id="in-mode-samples" aria-pressed="false">
+          <strong>Its own Model:Samples OS</strong>
+          <span>A first install, or after going back. Transfer shows it as Model:Samples.</span>
+        </button>
+        <button class="mode" id="in-mode-cycles" aria-pressed="false">
+          <strong>A Cycles OS with the key fix</strong>
+          <span>Installed with Modded-Cycles, a derivative or this page, and you want to change mods. Transfer shows it as Model:Cycles.</span>
+        </button>
       </div>
-      <div id="in-steps"></div>
-      <div class="progress" id="in-progress" hidden><span></span></div>
-      <ul class="log" id="in-log"></ul>
-      <p class="hint">Without Web MIDI: download the file and drop it on Elektron Transfer, or send it with any SysEx tool. Only the <span class="mono">smp-os</span> file goes through the STARTUP MENU (hold FUNC while powering on, press TRIG 4 (OS UPGRADE), and send it to the MIDI IN through a MIDI interface), whatever OS is installed. The STARTUP MENU ignores the <span class="mono">cyc-os</span> file: for that route, pick “Its own Model:Samples OS, or flashing from the STARTUP MENU” in step 1.</p>
-    </div>
+      <p class="hint">Installed another way, for example with elektron-firmware-tool? <a href="#revert-unfixed">Go back to the Samples OS first</a>, then come back here. Flashing from the STARTUP MENU over MIDI IN instead of USB? Pick “Its own Model:Samples OS”. <a href="#help-which">Not sure which you have?</a> Connecting in step 3 also tells you.</p>
+
+      <div id="in-files" hidden>
+        <h2 class="step-h" id="in-h-files">Add your files</h2>
+        <label class="drop small" id="in-drop">
+          <input type="file" id="in-file" accept=".syx,application/octet-stream" multiple>
+          <strong>Drop both .syx files here, or click to choose</strong>
+          <span>Your modded Cycles OS, and the official <span class="mono">model-samples_OS1.13.syx</span>. Nothing is uploaded.</span>
+        </label>
+        <ul class="need" id="in-need"></ul>
+      </div>
+
+      <div id="in-send" hidden>
+        <h2 class="step-h" id="in-h-send">Connect and send over USB</h2>
+        <p class="hint">Plug the Model:Samples in by USB, switch it on, and press Connect. The page asks the machine which OS it runs before sending.</p>
+        <div class="midi">
+          <button id="in-connect">Connect</button>
+          <select id="in-port" disabled aria-label="MIDI port"></select>
+          <span id="in-dev" class="dev" aria-live="polite"></span>
+        </div>
+        <p class="detect" id="in-detect" aria-live="polite"></p>
+        <div id="in-steps"></div>
+        <div class="progress" id="in-progress" role="progressbar" aria-label="Sending" aria-valuemin="0" aria-valuemax="100" hidden><span></span></div>
+      </div>
+
+      <div id="in-download" hidden>
+        <h2 class="step-h step-alt" id="in-h-download">Or download it for Elektron Transfer or a SysEx tool</h2>
+        <p class="hint">No Web MIDI here, or you prefer your own tool? Download the packed file and send it yourself.</p>
+        <div id="in-dl"></div>
+        <p class="note-recovery"><strong>Recovering a machine that does not start?</strong> You do not need this file: from the STARTUP MENU, send the official <span class="mono">model-samples_OS1.13.syx</span> directly. See <a href="#help-recovery">recovery</a>.</p>
+      </div>
+
+      <div id="in-activity">
+        <h3 class="sec-h">Activity</h3>
+        <ul class="log" id="in-log" aria-live="polite"></ul>
+      </div>
     </div>
 
     <details class="about">
       <summary>What is checked, and what is not</summary>
-      <p>A file built for a real Model:Cycles must be Elektron's Model:Cycles OS 1.13 in everything but the OS: header, section table, bootstrap, updater and meta match Elektron's fingerprints, and its signature checks with the Model:Cycles key (derived from its own bootstrap, so the official Model:Cycles OS is not needed). The OS's update-check code must be intact, so the key fix applies safely. Only the OS is carried over, and only its 32 key bytes change. A file already packed for the Model:Samples is kept as it is, with the key fix added if it lacks it.</p>
-      <p>What the page cannot check is whether each mod works on a Model:Samples. Both machines run the same hardware and Modded-Cycles builds the same mods for both. If an OS ever fails to start, the STARTUP MENU (hold FUNC while powering on, TRIG 4, the official <span class="mono">model-samples_OS1.13.syx</span> to the MIDI IN) brings the machine back.</p>
+      <p>A file built for a real Model:Cycles must be Elektron's Model:Cycles OS 1.13 in everything but the OS: header, section table, bootstrap, updater and meta match Elektron's fingerprints, and its signature checks with the Model:Cycles key (derived from its own bootstrap, so the official Model:Cycles OS is not needed). The OS's update-check code must be intact, so the key fix applies safely. Only the OS is carried over, and only its 32 key bytes change, signed with the Model:Samples key. A file already packed for the Model:Samples is kept as it is, with the key fix added if it lacks it. The result must then pass every check of the <a href="#check">Check a file</a> tab.</p>
+      <p>What the page cannot check is whether each mod works on a Model:Samples. Both machines run the same hardware and Modded-Cycles builds the same mods for both. If an OS ever fails to start, the <a href="#help-recovery">STARTUP MENU</a> brings the machine back.</p>
     </details>
 
     <aside class="credit">
@@ -257,50 +131,55 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     </aside>
   </section>
 
-  <section id="tab-revert" hidden>
-    <p class="lede">Bring a Model:Samples that runs a Model:Cycles OS back to its own Model:Samples OS over USB. These are the two ways back from <a href="https://github.com/18nelli18/Modded-Cycles">18nelli18's Modded-Cycles</a> flasher. The files are built in your browser from your official OS files and must match Modded-Cycles' reference builds byte for byte.</p>
+  <!-- ============================================================ Back to Samples OS -->
+  <section id="tab-revert" role="tabpanel" aria-labelledby="t-revert" hidden>
+    <p class="lede">Bring a Model:Samples that runs a Model:Cycles OS back to its own OS over USB, the two ways <a href="https://github.com/18nelli18/Modded-Cycles">18nelli18's Modded-Cycles</a> offers. The files are built here from your official OS files and must match Modded-Cycles' reference builds byte for byte.</p>
 
     <div class="callout">
-      <strong>Before you start:</strong> back up your projects and samples with Elektron Transfer. Set every track that uses an added machine (7 and up) back to one of the six original machines. Close Elektron Transfer and Overbridge so this page can use the USB port.
+      <strong>Before you start:</strong> back up your projects and samples with Elektron Transfer. Set every track that uses an added machine (7 and up) back to one of the six original machines. Close Transfer and Overbridge so this page can use the USB port.
     </div>
 
-    <h2 class="step-h">1. Which Cycles OS is on the Model:Samples?</h2>
-    <div class="modes">
-      <button class="mode" id="rv-mode-fixed">
-        <strong>Installed with Modded-Cycles or a Modded-Cycles derivative</strong>
-        <span>Modded-Cycles' web flasher, or a Modded-Cycles derivative's <span class="mono">_for-samples</span> file. Uses <em>Model:Samples: back to its OS</em>: one step, needs <span class="mono">model-samples_OS1.13.syx</span>.</span>
-      </button>
-      <button class="mode" id="rv-mode-unfixed">
-        <strong>Installed another way, without the key fix</strong>
-        <span>For example an elektron-firmware-tool cross-flash. Uses <em>Model:Cycles → Samples OS</em> and then, optionally, the official Samples OS as a clean-up. Needs both official OS files.</span>
-      </button>
-    </div>
-    <p class="hint">Not sure? Drop the file you installed in the <a href="#check">Check a file</a> tab: its last check says whether the key fix is there. Or simply try the first way: a Cycles OS without the key fix refuses it ("Upgrade Failed") and nothing changes. The second way is refused the same way by an OS that has the fix.</p>
-
-    <div class="rv-flow">
-    <div id="rv-files" hidden>
-      <h2 class="step-h">2. Your official OS files</h2>
-      <label class="drop small" id="rv-drop">
-        <input type="file" id="rv-file" accept=".syx" multiple>
-        <strong>Drop the official .syx files here</strong>
-        <span>From elektron.se, OS 1.13. They are recognised by their SHA-256 and never uploaded.</span>
-      </label>
-      <ul class="need" id="rv-need"></ul>
-    </div>
-
-    <div id="rv-send" hidden>
-      <h2 class="step-h">3. Send it</h2>
+    <div class="flow">
+      <h2 class="step-h" id="rv-h-connect">Connect the Model:Samples</h2>
+      <p class="hint">Plug it in by USB, switch it on, and press Connect. The page checks that it runs a Cycles OS.</p>
       <div class="midi">
-        <button id="rv-connect">Connect MIDI</button>
-        <select id="rv-port" disabled aria-label="MIDI output"></select>
-        <span id="rv-dev" class="dev"></span>
+        <button id="rv-connect">Connect</button>
+        <select id="rv-port" disabled aria-label="MIDI port"></select>
+        <span id="rv-dev" class="dev" aria-live="polite"></span>
       </div>
-      <label class="confirm" id="rv-confirm" hidden><input type="checkbox" id="rv-is-samples"> This machine is a <strong>Model:Samples</strong> (it says so on the front panel). A real Model:Cycles answers the same way and would also accept step 1, switching itself to the Samples OS.</label>
-      <div id="rv-steps"></div>
-      <div class="progress" id="rv-progress" hidden><span></span></div>
-      <ul class="log" id="rv-log"></ul>
-      <p class="hint">Without Web MIDI: download the file and drop it on Elektron Transfer. If nothing works over USB, use the STARTUP MENU: hold FUNC while powering on, press TRIG 4 (OS UPGRADE), and send the official <span class="mono">model-samples_OS1.13.syx</span> to the MIDI IN through a MIDI interface.</p>
-    </div>
+      <p class="detect" id="rv-detect" aria-live="polite"></p>
+
+      <h2 class="step-h" id="rv-h-mode">How was the Cycles OS installed?</h2>
+      <div class="modes">
+        <button class="mode" id="rv-mode-fixed" aria-pressed="false">
+          <strong>With Modded-Cycles, a derivative or this page</strong>
+          <span>One step. Needs <span class="mono">model-samples_OS1.13.syx</span>.</span>
+        </button>
+        <button class="mode" id="rv-mode-unfixed" aria-pressed="false">
+          <strong>Another way, for example elektron-firmware-tool</strong>
+          <span>One step, plus an optional clean-up. Needs both official OS files.</span>
+        </button>
+      </div>
+      <p class="hint"><a href="#help-which">Not sure?</a> Trying the first way is harmless: an OS that does not take it says “Upgrade Failed” and nothing changes.</p>
+
+      <div id="rv-files" hidden>
+        <h2 class="step-h" id="rv-h-files">Add the official OS files</h2>
+        <label class="drop small" id="rv-drop">
+          <input type="file" id="rv-file" accept=".syx" multiple>
+          <strong>Drop the official .syx files here, or click to choose</strong>
+          <span>OS 1.13 from elektron.se, recognised by their fingerprint. Nothing is uploaded.</span>
+        </label>
+        <ul class="need" id="rv-need"></ul>
+      </div>
+
+      <div id="rv-send" hidden>
+        <h2 class="step-h" id="rv-h-send">Send it, or download it</h2>
+        <label class="confirm" id="rv-confirm" hidden><input type="checkbox" id="rv-is-samples"> This machine is a <strong>Model:Samples</strong> (it says so on the front panel). A real Model:Cycles answers the same way over USB and would also accept the first file, switching itself to the Samples OS.</label>
+        <div id="rv-steps"></div>
+        <div class="progress" id="rv-progress" role="progressbar" aria-label="Sending" aria-valuemin="0" aria-valuemax="100" hidden><span></span></div>
+        <ul class="log" id="rv-log" aria-live="polite"></ul>
+        <p class="hint">Without USB here: drop the downloaded file on Elektron Transfer. If nothing works over USB, use the <a href="#help-recovery">STARTUP MENU</a>.</p>
+      </div>
     </div>
 
     <aside class="credit">
@@ -308,246 +187,87 @@ button:disabled { opacity: .45; cursor: not-allowed; }
     </aside>
   </section>
 
+  <!-- ============================================================ Check a file -->
+  <section id="tab-check" role="tabpanel" aria-labelledby="t-check" hidden>
+    <p class="lede">Drop the <span class="mono">.syx</span> you are about to flash on a Model:Samples, for example a Model:Cycles OS with mods. The page checks that only the OS changes and that the recovery path (Elektron's bootstrap and STARTUP MENU) stays untouched.</p>
+
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".syx,application/octet-stream" multiple>
+      <strong>Drop a .syx file here</strong>
+      <span>or click to choose one (several files at once are fine)</span>
+    </label>
+    <p class="privacy">Everything runs in your browser. The file is never uploaded.</p>
+
+    <div id="out" aria-live="polite"></div>
+
+    <details class="about">
+      <summary>What is checked, and why</summary>
+      <p>An OS update for the Model:Samples is a SysEx stream carrying an <em>ELE3 container</em> with four sections: meta (5), <strong>bootstrap</strong> (2, holds the STARTUP MENU), <strong>MAIN OS</strong> (3) and updater (4), signed with HMAC-SHA256. A custom OS should replace section 3 only.</p>
+      <ul>
+        <li><strong>SysEx transport</strong>: start/end markers, packet count, sequence, every packet checksum, no stray bytes. Product <span class="mono">0x0F</span> is the Samples' own transport. Product <span class="mono">0x11</span> is the transport for a Samples that already runs a Cycles OS installed for it.</li>
+        <li><strong>Container</strong>: content checksum, header and section table identical to the official Model:Samples OS 1.13, the same load addresses and bootstrap version, a valid layout, and a container small enough for flash (≤ 0x1c0000 bytes from 0x20000).</li>
+        <li><strong>Protected sections</strong>: bootstrap, updater and meta are compared with fingerprints of Elektron's own. A changed bootstrap is the one thing that can brick the device, so it is never accepted.</li>
+        <li><strong>Signature</strong>: valid with the Model:Samples key, which is derived from the file's own verified bootstrap. Otherwise the device refuses the file ("Upgrade Failed") and writes nothing.</li>
+        <li><strong>MAIN OS</strong>: unpacks without error. When the bootstrap unpacks it in place (input at 0x40200000, output from 0x40000400), the output never overtakes unread input. For a Model:Cycles OS, the update-check code must be intact and the 32-byte key fix must be present, so the official Samples OS can come back over USB.</li>
+      </ul>
+      <div class="legend">
+        <span style="--c: var(--pass)">pass</span><span style="--c: var(--warn)">warning: flashable, read it</span>
+        <span style="--c: var(--fail)">fail: refused or won't boot, recoverable</span><span style="--c: var(--crit)">critical: brick risk</span>
+      </div>
+      <p>The page stores no Elektron firmware bytes and no key, only SHA-256 fingerprints of the official OS 1.13 parts. Format and rules come from <a href="https://github.com/18nelli18/Modded-Cycles">Modded-Cycles</a> (mtlib, mods_for_samples.py, notes 02/41/57) and the in-place boot layout from Supermodel (notes/41 §9).</p>
+    </details>
+  </section>
+
+  <!-- ============================================================ Help & recovery -->
+  <section id="tab-help" role="tabpanel" aria-labelledby="t-help" hidden>
+    <div class="panel" id="help-recovery">
+      <h2>Recovery: the STARTUP MENU</h2>
+      <p>If an OS does not start, or an update over USB keeps failing, the STARTUP MENU brings the machine back. It is part of Elektron's bootstrap, which nothing on this page changes, so it works whatever OS is installed.</p>
+      <ol class="big">
+        <li>Connect a MIDI interface to the Model:Samples' <strong>MIDI IN</strong> (USB does not work in this menu).</li>
+        <li>Hold <kbd>FUNC</kbd> while switching the machine on.</li>
+        <li>Press <kbd>TRIG 4</kbd> (OS UPGRADE).</li>
+        <li>Send the official <span class="mono">model-samples_OS1.13.syx</span> with a SysEx tool. An <span class="mono">smp-os</span> file from the Install tab works too; a <span class="mono">cyc-os</span> file does not. It is slow: a few minutes at MIDI speed.</li>
+      </ol>
+    </div>
+
+    <div class="panel" id="help-which">
+      <h2>Which OS does my Model:Samples run?</h2>
+      <ul>
+        <li><strong>Connect it on the Install or Back tab.</strong> It answers as a <em>Model:Samples</em> on its own OS, and as a <em>Model:Cycles</em> on any Cycles OS. Elektron Transfer shows the same name.</li>
+        <li><strong>With or without the key fix?</strong> The machine cannot say. If you installed it with Modded-Cycles, a derivative or this page, it has the key fix. If you used elektron-firmware-tool or a plain Model:Cycles file, it does not. Still have the file you installed? Drop it on <a href="#check">Check a file</a>: its last check says whether the key fix is there.</li>
+        <li><strong>Still unsure?</strong> Try the first way on the Back tab: an OS without the key fix refuses it (“Upgrade Failed”) and nothing changes.</li>
+      </ul>
+    </div>
+
+    <div class="panel" id="help-glossary">
+      <h2>Words used on this page</h2>
+      <dl class="gloss">
+        <dt>Cycles OS</dt>
+        <dd>The Model:Cycles operating system, with or without mods. The Model:Samples has the same hardware and can run it.</dd>
+        <dt>Key fix</dt>
+        <dd>A 32-byte change to a Cycles OS (from Modded-Cycles) that lets it accept updates signed for the Model:Samples. Without it, the only way back over USB is the two-file one, or the STARTUP MENU.</dd>
+        <dt>smp-os / cyc-os</dt>
+        <dd>The same packed OS in two wrappings. <span class="mono">smp-os</span> is for a machine on its own Model:Samples OS, or the STARTUP MENU. <span class="mono">cyc-os</span> is for a machine already on a Cycles OS with the key fix, over USB.</dd>
+        <dt>STARTUP MENU</dt>
+        <dd>Elektron's recovery menu (FUNC + power on). It takes only Model:Samples files, over MIDI IN. See <a href="#help-recovery">recovery</a>.</dd>
+        <dt>Web MIDI</dt>
+        <dd>How a browser talks to MIDI devices. Chrome, Edge and Opera have it; the page must be served over https (or <span class="mono">python3 -m http.server</span>), not opened as a file.</dd>
+      </dl>
+    </div>
+  </section>
+
   <footer>Not affiliated with Elektron. A passing check lowers the risk; it does not guarantee that the OS itself works. Back up your projects and samples with Elektron Transfer before flashing.</footer>
 </main>
 
+<script src="ui.js"></script>
 <script src="sanity.js"></script>
 <script src="vendor/modded-cycles/builder.js"></script>
 <script src="vendor/modded-cycles/flasher.js"></script>
 <script src="usb.js"></script>
+<script src="check.js"></script>
 <script src="revert.js"></script>
 <script src="install.js"></script>
-<script>
-(function () {
-  const show = () => {
-    const tab = location.hash.startsWith("#revert") ? "revert" : location.hash.startsWith("#install") ? "install" : "check";
-    for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
-    document.getElementById("tab-check").hidden = tab !== "check";
-    document.getElementById("tab-revert").hidden = tab !== "revert";
-    document.getElementById("tab-install").hidden = tab !== "install";
-  };
-  for (const b of document.querySelectorAll(".tabs button")) b.onclick = () => { history.replaceState(null, "", "#" + b.dataset.tab); show(); };
-  window.addEventListener("hashchange", show);
-  show();
-})();
-</script>
-<script>
-(function () {
-  "use strict";
-  const S = window.SamplesSanity;
-  const out = document.getElementById("out");
-  const drop = document.getElementById("drop");
-  const input = document.getElementById("file");
-
-  const VERDICT = {
-    safe: ["✓", "Looks safe to flash", "Only the OS (section 3) differs from Elektron's Model:Samples firmware, and everything it depends on checks out."],
-    warn: ["!", "Flashable, with caveats", "Nothing here touches the recovery path, but read the warnings before flashing."],
-    fail: ["✕", "Do not flash this file", "The device would refuse it or the OS would not start. The STARTUP MENU still recovers that, but fix the file first."],
-    critical: ["✕", "Do not flash: brick risk", "This file changes more than the OS, or it is not a Model:Samples firmware. It touches what the recovery path depends on."],
-  };
-  const ICON = { pass: "✓", info: "i", skip: "–", warn: "!", fail: "✕", critical: "✕" };
-
-  function el(tag, cls, text) {
-    const e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
-  }
-
-  function render(r) {
-    const box = el("section", "result");
-    const [ic, title, sub] = VERDICT[r.verdict];
-    const v = el("div", "verdict v-" + r.verdict);
-    const h = el("h2"); h.append(el("span", null, ic), el("span", null, title));
-    v.append(h, el("p", null, sub));
-    box.append(v);
-
-    const f = r.facts, dl = el("dl", "facts");
-    const row = (k, val, mono) => { if (val == null || val === "") return; dl.append(el("dt", null, k), el("dd", mono ? "mono" : null, val)); };
-    row("File", `${f.fileName} (${f.size.toLocaleString("en-US")} bytes)`);
-    row("SHA-256", f.sha256, true);
-    if (f.known) row("Recognised as", f.known);
-    if (f.mainSize) row("MAIN OS", `${f.mainSize.toLocaleString("en-US")} bytes, ends at 0x${f.mainEnd.toString(16)}`
-      + (f.os === "cycles" ? (f.cyclesStock ? " (stock Model:Cycles OS)" : " (Model:Cycles OS with mods)") : f.os === "samples" ? " (official Model:Samples OS)" : ""));
-
-    const ov = el("div", "overview");
-    const left = el("div");
-    left.append(el("h3", "sec-h", "File"), dl);
-    ov.append(left);
-    if (f.routes) {
-      const af = el("div", "after");
-      const p1 = el("p"); p1.append(el("strong", null, "After flashing: "), document.createTextNode(f.after.now));
-      const p2 = el("p"); p2.append(el("strong", null, "Next updates / way back: "), document.createTextNode(f.after.next));
-      af.append(p1, p2);
-      left.append(af);
-
-      const w = el("div");
-      w.append(el("h3", "sec-h", "Where and when it can be flashed"));
-      const LBL = { yes: "Yes", no: "No", risky: "Risky" };
-      for (const x of f.routes) {
-        const rr = el("details", "route r-" + x.ok);
-        const sm = el("summary");
-        sm.append(el("span", "badge", LBL[x.ok]), el("span", "t", x.where));
-        const more = el("div", "more");
-        if (x.how !== "—") more.append(el("div", "how", "via " + x.how));
-        more.append(el("div", "d", x.why));
-        rr.append(sm, more);
-        w.append(rr);
-      }
-      ov.append(w);
-    }
-    box.append(ov);
-
-    // Checks: one collapsible card per group, opened when something in it needs attention
-    const RANK = { pass: 0, info: 0, skip: 1, warn: 2, fail: 3, critical: 4 };
-    const NAME = { warn: ["warning", "warnings"], fail: ["failure", "failures"], critical: ["critical", "critical"], skip: ["skipped", "skipped"] };
-    const groups = [];
-    for (const c of r.checks) {
-      if (!groups.length || groups[groups.length - 1].name !== c.group) groups.push({ name: c.group, items: [] });
-      groups[groups.length - 1].items.push(c);
-    }
-    const tallyOf = (items) => {
-      const n = {};
-      for (const c of items) n[c.status] = (n[c.status] || 0) + 1;
-      return n;
-    };
-    const describe = (n, total) => {
-      const bad = ["critical", "fail", "warn", "skip"].filter((k) => n[k]).map((k) => `${n[k]} ${NAME[k][n[k] > 1 ? 1 : 0]}`);
-      return bad.length ? bad.join(", ") : `${total} OK`;
-    };
-
-    const cs = el("div", "checks");
-    const top = el("div", "checks-top");
-    const all = tallyOf(r.checks);
-    const tally = el("div", "tally");
-    const ok = (all.pass || 0) + (all.info || 0);
-    const issues = describe(all, 0);
-    tally.append(el("span", null, `${ok} of ${r.checks.length} checks passed` + (ok < r.checks.length ? ` · ${issues}` : "")));
-    const toggle = el("button", "link", "Expand all");
-    tally.append(toggle);
-    top.append(el("h3", "sec-h", "Checks"), tally);
-    cs.append(top);
-
-    const grid = el("div", "grid");
-    const cards = [];
-    for (const g of groups) {
-      const worst = g.items.reduce((m, c) => (RANK[c.status] > RANK[m] ? c.status : m), "pass");
-      const card = el("details", "gcard s-" + worst);
-      if (RANK[worst] >= 2) card.open = true;
-      const sm = el("summary");
-      sm.append(el("span", "ic", ICON[worst]), el("span", "gname", g.name), el("span", "count", describe(tallyOf(g.items), g.items.length)));
-      const rows = el("div", "rows");
-      for (const c of g.items) {
-        const rw = el("div", "chk s-" + c.status);
-        rw.append(el("span", "ic", ICON[c.status]), el("span", "t", c.title));
-        if (c.detail) rw.append(el("span", "d", c.detail));
-        if (c.link) { const a = el("a", "go", c.link.text + " →"); a.href = c.link.href; rw.append(a); }
-        rows.append(rw);
-      }
-      card.append(sm, rows);
-      cards.push(card);
-      grid.append(card);
-    }
-    const sync = () => { toggle.textContent = cards.every((c) => c.open) ? "Collapse all" : "Expand all"; };
-    toggle.onclick = () => { const open = !cards.every((c) => c.open); for (const c of cards) c.open = open; sync(); };
-    for (const c of cards) c.addEventListener("toggle", sync);
-    sync();
-    cs.append(grid);
-    box.append(cs);
-
-    const act = el("div", "actions");
-    const copy = el("button", null, "Copy report");
-    copy.onclick = async () => {
-      const txt = S.report(r);
-      try { await navigator.clipboard.writeText(txt); copy.textContent = "Copied"; }
-      catch (e) {
-        const ta = document.createElement("textarea"); ta.value = txt; document.body.append(ta); ta.select();
-        try { document.execCommand("copy"); copy.textContent = "Copied"; } catch (e2) { copy.textContent = "Copy failed"; }
-        ta.remove();
-      }
-      setTimeout(() => (copy.textContent = "Copy report"), 1600);
-    };
-    const save = el("button", null, "Save report (.txt)");
-    save.onclick = () => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([S.report(r)], { type: "text/plain" }));
-      a.download = (f.fileName || "firmware").replace(/\.syx$/i, "") + "_check.txt";
-      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    };
-    act.append(copy, save);
-    if (f.seqHigh && r.verdict === "warn") {
-      const fix = el("button", "primary", "Download re-wrapped .syx");
-      fix.title = "Same container, OS and signature; packet numbering fixed for MIDI IN and Web MIDI";
-      fix.onclick = () => {
-        try {
-          const out = S.rewrap(r.raw);
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(new Blob([out], { type: "application/octet-stream" }));
-          a.download = (f.fileName || "firmware").replace(/\.syx$/i, "") + "_rewrapped.syx";
-          a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-          fix.textContent = "Saved: check it again here";
-        } catch (e) { fix.textContent = "Re-wrap failed: " + e.message; fix.disabled = true; }
-      };
-      act.prepend(fix);
-    }
-    if (f.canFixKey && r.verdict === "warn") {
-      const fix = el("button", "primary", "Download .syx with the key fix");
-      fix.title = "Same container and OS; only the 32-byte key constant changes, re-signed with the Model:Samples key";
-      fix.onclick = () => {
-        try {
-          const out = S.fixKey(r.raw);
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(new Blob([out], { type: "application/octet-stream" }));
-          a.download = (f.fileName || "firmware").replace(/\.syx$/i, "") + "_keyfix.syx";
-          a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-          fix.textContent = "Saved: check it again here";
-        } catch (e) { fix.textContent = "Key fix failed: " + e.message; fix.disabled = true; }
-      };
-      act.prepend(fix);
-    }
-    // Install it from the Install a Cycles OS tab: a Model:Cycles build, or a Cycles OS packed for the Model:Samples
-    if (window.SamplesInstall && r.raw && (f.cyclesContainer || (f.os === "cycles" && (r.verdict === "safe" || r.verdict === "warn")))) {
-      const go = el("button", "primary", "Install it on a Model:Samples →");
-      go.title = f.cyclesContainer ? "Pack it for the Model:Samples, then send it over USB or download it"
-        : "Send it over USB, or get it in the other transport (smp-os / cyc-os)";
-      go.onclick = () => {
-        window.SamplesInstall.load(f.fileName || "firmware.syx", r.raw);
-        location.hash = f.cyclesContainer ? "#install" : f.transport === "cycles" ? "#install-cycles" : "#install-samples";
-        window.scrollTo(0, 0);
-      };
-      act.prepend(go);
-    }
-    box.append(act);
-    return box;
-  }
-
-  async function handle(files) {
-    out.textContent = "";
-    for (const file of files) {
-      const busy = el("div", "result busy", `Checking ${file.name}…`);
-      out.append(busy);
-      await new Promise((res) => setTimeout(res, 20));      // let the message paint
-      try {
-        const buf = new Uint8Array(await file.arrayBuffer());
-        const res = S.check(buf, file.name);
-        res.raw = buf;
-        busy.replaceWith(render(res));
-      } catch (e) {
-        busy.textContent = `Could not check ${file.name}: ${e.message}`;
-      }
-    }
-  }
-
-  // From the Install a Cycles OS tab: check the file it built
-  window.SamplesCheck = { show: (name, raw) => handle([{ name, arrayBuffer: async () => raw }]) };
-
-  input.addEventListener("change", () => { if (input.files.length) handle([...input.files]); input.value = ""; });
-  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
-  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", (e) => { if (e.dataTransfer.files.length) handle([...e.dataTransfer.files]); });
-  window.addEventListener("dragover", (e) => e.preventDefault());
-  window.addEventListener("drop", (e) => e.preventDefault());
-})();
-</script>
+<script src="app.js"></script>
 </body>
 </html>

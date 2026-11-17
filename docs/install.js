@@ -6,16 +6,17 @@
  *  - its own Model:Samples OS: smp-os (product 0x0F), also the STARTUP MENU over MIDI IN, whatever OS is installed;
  *  - a Cycles OS with the key fix (Modded-Cycles or a derivative): cyc-os (product 0x11), over USB only.
  *
- * A Cycles OS without the key fix takes neither: back to the Samples OS first ("Back to Samples OS", second way).
+ * A Cycles OS without the key fix takes neither: back to the Samples OS first ("Back to Samples OS" tab, second way).
+ *
+ * Steps: 1. which OS it runs, 2. files, 3. connect and send over USB (the machine's answer is compared with step 1),
+ * 4. or download the file for Elektron Transfer or a SysEx tool.
  */
 (function () {
 "use strict";
 
-const S = window.SamplesSanity;
+const S = window.SamplesSanity, UI = window.SamplesUI;
+const { $, el, kb } = UI;
 const st = { mode: null, mod: null, smp: null, result: null, error: null, busy: false, log: [] };
-const $ = (id) => document.getElementById(id);
-const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const kb = (n) => (n / 1024).toFixed(0) + " KB";
 const hexSha = (raw) => S.hex(S.sha256(raw));
 const DEV = { 0x11: "Model:Cycles", 0x0f: "Model:Samples" };
 
@@ -28,13 +29,15 @@ function baseName(name) {
 // ---- the file for the chosen OS -------------------------------------------------------------------------------
 const STEPS = {
   samples: { id: "smp", key: "smp", suffix: "smp-os", product: 0x0f,
-    title: "Send the Cycles OS, packed for the Model:Samples OS (smp-os)",
-    sub: "Product 0x0F, the Model:Samples' own transport. The machine answers as a Model:Samples and restarts on the Cycles OS; from then on Transfer shows it as a Model:Cycles. The same file goes through the STARTUP MENU over MIDI IN with a SysEx tool, whatever OS is installed.",
+    title: "Your mods, for a Model:Samples on its own OS (smp-os)",
+    sub: "The machine restarts on the Cycles OS with your mods; from then on Transfer shows it as a Model:Cycles.",
+    where: "Send it with Elektron Transfer or a SysEx tool over USB while the Model:Samples OS runs, or with a SysEx tool from the STARTUP MENU over MIDI IN, whatever OS is installed.",
     refused: "" },
   cycles: { id: "cyc", key: "cyc", suffix: "cyc-os", product: 0x11,
-    title: "Send the Cycles OS, packed for a Cycles OS with the key fix (cyc-os)",
-    sub: "Product 0x11, the transport a Cycles OS listens to. The machine answers as a Model:Cycles and restarts on the new Cycles OS.",
-    note: "Over USB only, while the Cycles OS runs. The STARTUP MENU (FUNC + power on) ignores this file: to flash from it with a SysEx tool, pick “Its own Model:Samples OS, or flashing from the STARTUP MENU” in step 1 and use the smp-os file.",
+    title: "Your mods, for a Model:Samples already on a Cycles OS (cyc-os)",
+    sub: "Replaces the Cycles OS it runs now with this one. The machine restarts on the new Cycles OS.",
+    note: "Over USB only, while the Cycles OS runs. The STARTUP MENU ignores this file: for that route, pick “Its own Model:Samples OS” in step 1 and use the smp-os file.",
+    where: "Send it with Elektron Transfer or a SysEx tool over USB, while the Cycles OS runs. Not from the STARTUP MENU: it ignores this file (use the smp-os file there).",
     refused: "If it says “Upgrade Failed”, its Cycles OS has no key fix (or it is a real Model:Cycles), and nothing is written: go back to the Samples OS first (Back to Samples OS tab, second way), or use the STARTUP MENU with the smp-os file." },
 };
 function steps() {
@@ -84,7 +87,7 @@ function devProblem(step) {
   if (usb.dev.product === step.product) return null;
   if (step.product === 0x0f)
     return "It answers as a Model:Cycles: it runs a Cycles OS. With the key fix (installed with Modded-Cycles or a derivative), pick “A Cycles OS with the key fix” in step 1. Without it, its OS refuses both files: go back to the Samples OS first (Back to Samples OS tab), or use the STARTUP MENU.";
-  return "It answers as a Model:Samples: it runs its own OS. Pick “Its own Model:Samples OS, or flashing from the STARTUP MENU” in step 1.";
+  return "It answers as a Model:Samples: it runs its own OS. Pick “Its own Model:Samples OS” in step 1.";
 }
 
 function send(step) {
@@ -93,7 +96,7 @@ function send(step) {
 
 function download(step) {
   const raw = st.result[step.key];
-  window.SamplesUSB.save(raw, step.name);
+  UI.save(raw, step.name);
   log(`Saved ${step.name} (${kb(raw.length)}, SHA-256 ${hexSha(raw).slice(0, 16)}…).`, "ok");
 }
 
@@ -103,78 +106,92 @@ function checkIt(step) {
   window.SamplesCheck.show(step.name, st.result[step.key]);
 }
 
+function choose(mode) { st.mode = mode; render(); }
+
+/* What the machine's answer means next to the OS chosen in step 1, under the Connect button. */
+function detected() {
+  const d = usb.dev;
+  if (!d || d.state !== "ok" || !d.product || !st.mode) return "";
+  if (d.product === 0x0f)
+    return st.mode === "samples" ? "It runs its own Model:Samples OS, as chosen in step 1."
+      : "It runs its own Model:Samples OS: pick “Its own Model:Samples OS” in step 1.";
+  return st.mode === "cycles"
+    ? "It runs a Cycles OS, as chosen in step 1. Installed another way than Modded-Cycles, a derivative or this page (for example an elektron-firmware-tool cross-flash)? Go back to the Samples OS first with the Back to Samples OS tab."
+    : "It runs a Cycles OS: with the key fix, pick “A Cycles OS with the key fix” in step 1; without it, go back to the Samples OS first with the Back to Samples OS tab.";
+}
+
+/* One file to download, for Elektron Transfer or a SysEx tool. */
+function downloadRow(s, ready) {
+  const r = el("div", "step" + (ready ? "" : " off"));
+  r.append(el("h4", "mono", s.name));
+  r.append(el("p", "sub", s.where));
+  r.append(el("p", "meta", st.busy ? "Packing and checking…" : ready ? kb(st.result[s.key].length) : "Add both files in step 2 first."));
+  const row = el("div", "btns");
+  const dl = el("button", "primary", "Download .syx");
+  dl.disabled = !ready;
+  dl.onclick = () => download(s);
+  const ck = el("button", null, "Check it");
+  ck.title = "Open this file's full report in the Check a file tab";
+  ck.disabled = !ready;
+  ck.onclick = () => checkIt(s);
+  row.append(dl, ck);
+  r.append(row);
+  return r;
+}
+
 // ---- rendering --------------------------------------------------------------------------------------------------
 function log(msg, kind) { st.log.push({ msg, kind: kind || "" }); }
 
 function render() {
-  for (const m of ["samples", "cycles"]) $("in-mode-" + m).classList.toggle("on", st.mode === m);
+  for (const m of ["samples", "cycles"]) {
+    $("in-mode-" + m).classList.toggle("on", st.mode === m);
+    $("in-mode-" + m).setAttribute("aria-pressed", String(st.mode === m));
+  }
+  $("in-detect").textContent = detected();
   $("in-files").hidden = !st.mode;
   $("in-send").hidden = !st.mode;
+  $("in-download").hidden = !st.mode;
+  UI.stepState("in-h-mode", st.mode ? "done" : "");
+  UI.stepState("in-h-files", st.result ? "done" : "");
 
-  const need = $("in-need");
-  need.textContent = "";
-  for (const [have, label] of [[st.mod, st.mod ? st.mod.name : "your Cycles OS .syx"], [st.smp, "model-samples_OS1.13.syx"]]) {
-    const li = el("li", have ? "have" : "missing");
-    li.append(el("span", "badge", have ? "✓" : "needed"), el("span", "mono", label));
-    need.append(li);
-  }
+  UI.needList($("in-need"), [[st.mod, st.mod ? st.mod.name : "your Cycles OS .syx"], [st.smp, "model-samples_OS1.13.syx"]]);
 
-  const box = $("in-steps");
-  box.textContent = "";
+  const box = $("in-steps"), dls = $("in-dl");
+  box.textContent = ""; dls.textContent = "";
   for (const s of steps()) {
     const ready = !!st.result;
-    const card = el("div", "step" + (ready ? "" : " off"));
-    card.append(el("h4", null, s.title));
-    if (s.note) card.append(el("p", "skip", s.note));
-    card.append(el("p", "sub", s.sub));
-    card.append(el("p", "meta", st.busy ? "Packing and checking…"
-      : ready ? `${s.name} · ${kb(st.result[s.key].length)} · goes to a machine that answers as ${DEV[s.product]}`
-      : st.error ? "Not packed: see the message below." : "Add both files first."));
-    const row = el("div", "btns");
-    const p = ready && usb.midi ? devProblem(s) : null;
-    const go = el("button", "primary", usb.sending === s.id ? "Sending…" : "Send over USB");
-    go.disabled = !ready || !usb.midi || !!p || !!usb.sending;
-    go.onclick = () => send(s);
-    const dl = el("button", null, "Download .syx");
-    dl.disabled = !ready;
-    dl.onclick = () => download(s);
-    const ck = el("button", null, "Check it");
-    ck.title = "Open this file's full report in the Check a file tab";
-    ck.disabled = !ready;
-    ck.onclick = () => checkIt(s);
-    row.append(go, dl, ck);
-    if (usb.sending === s.id) { const c = el("button", null, "Cancel"); c.onclick = () => { usb.cancel = true; }; row.append(c); }
-    card.append(row);
-    if (ready && usb.midi && p) card.append(el("p", "why", p));
-    box.append(card);
+    box.append(usb.card(s, {
+      ready,
+      meta: st.busy ? "Packing and checking…"
+        : ready ? `${s.name} · ${kb(st.result[s.key].length)} · goes to a machine that answers as ${DEV[s.product]}`
+        : st.error ? "Not packed: see Activity below." : "Add both files in step 2 first.",
+      problem: () => devProblem(s),
+      send: () => send(s),
+      connectHint: "Connect above to send it over USB.",
+    }));
+    dls.append(downloadRow(s, ready));
   }
 
   usb.renderBar();
-  const lg = $("in-log");
-  lg.textContent = "";
-  for (const x of st.log.slice(-8)) lg.append(el("li", x.kind, x.msg));
+  UI.renderLog($("in-log"), st.log);
 }
 
 function init() {
   if (!S || !usb || !$("in-drop")) return;
   usb.init();
-  $("in-mode-samples").onclick = () => { st.mode = "samples"; render(); };
-  $("in-mode-cycles").onclick = () => { st.mode = "cycles"; render(); };
-  const input = $("in-file"), drop = $("in-drop");
-  input.addEventListener("change", () => { if (input.files.length) addFiles([...input.files]); input.value = ""; });
-  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
-  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", (e) => { if (e.dataTransfer.files.length) addFiles([...e.dataTransfer.files]); });
+  $("in-mode-samples").onclick = () => choose("samples");
+  $("in-mode-cycles").onclick = () => choose("cycles");
+  UI.dropZone($("in-drop"), $("in-file"), addFiles);
   // Deep links (Check a file tab): #install-samples / #install-cycles preselect the OS the machine runs
   const fromHash = () => {
     const m = /^#install-(samples|cycles)$/.exec(location.hash);
-    if (m) { st.mode = m[1]; render(); }
+    if (m) choose(m[1]);
   };
   window.addEventListener("hashchange", fromHash);
   fromHash();
   render();
 }
 
-window.SamplesInstall = { state: st, usb, steps, devProblem, baseName, addFiles, load, init };
+window.SamplesInstall = { state: st, usb, steps, devProblem, baseName, addFiles, load, init, render };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();

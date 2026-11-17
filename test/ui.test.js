@@ -1,4 +1,4 @@
-// The result card drawn by docs/index.html, run against a minimal DOM stand-in (no browser, no dependencies).
+// The result card drawn by docs/check.js and the Install / Back tabs, run against a minimal DOM stand-in (no browser, no dependencies).
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -23,19 +23,22 @@ class Node {
 }
 const text = (s) => ({ textContent: s });
 
-function loadRender() {
-  const html = fs.readFileSync(path.join(SITE, "index.html"), "utf8");
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-  const src = scripts.find((s) => s.includes("function render(r)"));
-  assert.ok(src, "index.html has the result script");
-  const ids = {};
-  const g = {
-    document: { createElement: (t) => new Node(t), createTextNode: text, getElementById: (id) => (ids[id] ||= new Node("div")), body: new Node("body") },
-    window: { SamplesSanity: S, addEventListener() {} },
-  };
-  const hooked = src.replace("function render(r) {", "window.__render = render; function render(r) {");
-  new Function("document", "window", "navigator", "URL", "Blob", hooked)(g.document, g.window, {}, {}, function () {});
-  return g.window.__render;
+/* Runs docs/ scripts in order against a fake window/document, the way index.html loads them. */
+const PARAMS = ["window", "document", "navigator", "location", "URL", "Blob", "setTimeout"];
+function run(files, env) {
+  for (const f of files)
+    new Function(...PARAMS, fs.readFileSync(path.join(SITE, f), "utf8"))(...PARAMS.map((k) => env[k]));
+  return env.window;
+}
+function fakeDocument(ids, extra) {
+  return Object.assign({ readyState: "complete", createElement: (t) => new Node(t), createTextNode: text,
+    getElementById: (id) => (ids[id] ||= new Node("div")), body: new Node("body") }, extra);
+}
+
+function loadRender(window = {}, location = { hash: "" }) {
+  const env = { window: Object.assign(window, { SamplesSanity: S, addEventListener() {}, scrollTo() {} }),
+    document: fakeDocument({}), navigator: {}, location, URL: {}, Blob: function () {}, setTimeout: () => {} };
+  return run(["ui.js", "check.js"], env).SamplesCheck.render;
 }
 const render = loadRender();
 
@@ -148,20 +151,18 @@ test("the key-fix button appears only for a fixable missing key fix", () => {
 });
 
 // ---- "Install a Cycles OS" tab (docs/install.js, on docs/usb.js) ---------------------------------------------------
-function loadInstall() {
+function loadTab(f, window = {}) {
   const ids = {}, saved = [];
-  const document = {
-    readyState: "complete", createTextNode: text, getElementById: (id) => (ids[id] ||= new Node("div")),
+  const document = fakeDocument(ids, {
     createElement: (t) => { const n = new Node(t); if (t === "a") n.click = () => saved.push(n.download); return n; },
-  };
+  });
   const location = { hash: "" };
-  const window = { SamplesSanity: S, MCFlasher: {}, addEventListener() {}, isSecureContext: false };
-  const URL = { createObjectURL: () => "blob:x", revokeObjectURL() {} };
-  for (const f of ["usb.js", "install.js"])
-    new Function("window", "document", "navigator", "location", "URL", "Blob", "setTimeout", fs.readFileSync(path.join(SITE, f), "utf8"))(
-      window, document, {}, location, URL, function () {}, (fn) => fn());
-  return { I: window.SamplesInstall, ids, saved, location, window };
+  const env = { window: Object.assign({ SamplesSanity: S, MCFlasher: {}, addEventListener() {}, isSecureContext: false }, window),
+    document, navigator: {}, location, URL: { createObjectURL: () => "blob:x", revokeObjectURL() {} }, Blob: function () {}, setTimeout: (fn) => fn() };
+  run(["ui.js", "usb.js", f], env);
+  return { ids, saved, location, window: env.window };
 }
+function loadInstall() { const t = loadTab("install.js"); return Object.assign(t, { I: t.window.SamplesInstall }); }
 const file = (name, bytes) => ({ name, arrayBuffer: async () => bytes });
 const click = (ids, id) => ids[id].onclick();
 
@@ -188,7 +189,7 @@ test("install tab: same three steps as Back to Samples OS; one file per OS, sent
   assert.match(ids["in-need"].textContent, /needed/);
   let card = ids["in-steps"].byClass("step")[0];
   assert.match(card.className, /off/);
-  assert.match(card.textContent, /Add both files first/);
+  assert.match(card.textContent, /Add both files/);
 
   await I.addFiles([file("model-cycles_OS1.13.syx", cyc)]);
   assert.equal(I.state.error, null);
@@ -196,24 +197,29 @@ test("install tab: same three steps as Back to Samples OS; one file per OS, sent
   card = ids["in-steps"].byClass("step")[0];
   assert.match(card.textContent, /smp-os/);
   assert.match(card.textContent, /answers as Model:Samples/);
-  const [go, dl, ck] = card.byClass("btns")[0].children;
-  assert.equal(go.textContent, "Send over USB");
-  assert.equal(go.disabled, true, "no MIDI yet");
+  const sendBtns = card.byClass("btns")[0].children;
+  assert.deepEqual(sendBtns.map((b) => b.textContent), ["Send over USB"], "downloading is its own section");
+  assert.equal(sendBtns[0].disabled, true, "no MIDI yet");
+  const dlRow = () => ids["in-dl"].byClass("step")[0];
+  assert.match(dlRow().textContent, /STARTUP MENU over MIDI IN/);
+  const [dl, ck] = dlRow().byClass("btns")[0].children;
+  assert.deepEqual([dl.textContent, ck.textContent], ["Download .syx", "Check it"]);
   dl.onclick();
   click(ids, "in-mode-cycles");
-  ids["in-steps"].byClass("step")[0].byClass("btns")[0].children[1].onclick();
+  assert.match(dlRow().textContent, /Not from the STARTUP MENU/);
+  dlRow().byClass("btns")[0].children[0].onclick();
   assert.deepEqual(saved, ["model-cycles_OS1.13_for-samples_smp-os.syx", "model-cycles_OS1.13_for-samples_cyc-os.syx"]);
 
   let shown = null;
   window.SamplesCheck = { show: (name, raw) => { shown = { name, raw }; } };
-  ids["in-steps"].byClass("step")[0].byClass("btns")[0].children[2].onclick();
+  dlRow().byClass("btns")[0].children[1].onclick();
   assert.equal(location.hash, "#check");
   assert.equal(shown.name, "model-cycles_OS1.13_for-samples_cyc-os.syx");
   assert.equal(S.check(shown.raw).verdict, "safe");
 
   await I.load("bad.syx", cyc.subarray(0, 4000));          // from the Check a file tab
   assert.match(ids["in-log"].textContent, /bad\.syx: not packed\. /);
-  assert.equal(ids["in-steps"].byClass("step")[0].byClass("btns")[0].children[1].disabled, true);
+  assert.equal(dlRow().byClass("btns")[0].children[0].disabled, true);
 });
 
 test("install tab: the machine that answers must run the OS chosen in step 1", () => {
@@ -231,21 +237,12 @@ test("install tab: the machine that answers must run the OS chosen in step 1", (
   assert.match(I.devProblem(step("samples")), /answers as a Model:Cycles.*key fix/);
   assert.match(step("cycles").refused, /Upgrade Failed.*no key fix/);
   assert.match(step("cycles").note, /STARTUP MENU .*ignores this file/);
-  assert.match(step("samples").sub, /STARTUP MENU/);
+  assert.match(step("samples").where, /STARTUP MENU/);
 });
 
 test("check result: “Install it on a Model:Samples” only for a Cycles OS, and it opens the install tab with the file", () => {
-  const calls = [];
-  const html = fs.readFileSync(path.join(SITE, "index.html"), "utf8");
-  const src = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((x) => x.includes("function render(r)"));
-  const ids = {}, location = { hash: "" };
-  const g = {
-    document: { createElement: (t) => new Node(t), createTextNode: text, getElementById: (id) => (ids[id] ||= new Node("div")), body: new Node("body") },
-    window: { SamplesSanity: S, addEventListener() {}, scrollTo() {}, SamplesInstall: { load: (n, raw) => calls.push(n) } },
-  };
-  const hooked = src.replace("function render(r) {", "window.__render = render; function render(r) {");
-  new Function("document", "window", "navigator", "URL", "Blob", "location", hooked)(g.document, g.window, {}, {}, function () {}, location);
-  const r2 = g.window.__render;
+  const calls = [], location = { hash: "" }, window = { SamplesInstall: { load: (n, raw) => calls.push(n) } };
+  const r2 = loadRender(window, location);
   const btn = (box) => box.byClass("primary").find((b) => /Install it/.test(b.textContent));
 
   assert.equal(btn(r2(result({ verdict: "safe", raw: new Uint8Array(1) }))), undefined, "not for the Samples OS");
@@ -255,5 +252,47 @@ test("check result: “Install it on a Model:Samples” only for a Cycles OS, an
   assert.equal(location.hash, "#install");
   btn(r2(result({ verdict: "safe", raw: new Uint8Array(1), facts: { ...result().facts, os: "cycles", transport: "cycles" } }))).onclick();
   assert.equal(location.hash, "#install-cycles");
-  assert.equal(typeof g.window.SamplesCheck.show, "function");
+  assert.equal(typeof window.SamplesCheck.show, "function");
+});
+
+test("install tab: the machine's answer is compared with the OS chosen in step 1", () => {
+  const { I, ids } = loadInstall();
+  I.usb.dev = { state: "ok", product: 0x11, name: "x" };
+  I.render();
+  assert.equal(I.state.mode, null, "connecting does not choose for you");
+  assert.equal(ids["in-detect"].textContent, "");
+  click(ids, "in-mode-cycles");
+  assert.match(ids["in-detect"].textContent, /runs a Cycles OS, as chosen in step 1/);
+  click(ids, "in-mode-samples");
+  assert.match(ids["in-detect"].textContent, /runs a Cycles OS: with the key fix, pick/);
+  I.usb.dev.product = 0x0f; I.render();
+  assert.match(ids["in-detect"].textContent, /its own Model:Samples OS, as chosen/);
+});
+
+test("install tab: without Web MIDI the page says so and still offers the download", () => {
+  const { ids } = loadInstall();
+  assert.equal(ids["in-connect"].disabled, true);
+  assert.match(ids["in-dev"].textContent, /no Web MIDI.*download the file/);
+});
+
+test("back tab: two ways, the files each needs, and the Model:Samples box for the second", () => {
+  const { ids, window } = loadTab("revert.js", { MCBuilder: { hex: S.hex, sha256: S.sha256 } });
+  const R = window.SamplesRevert;
+  assert.equal(ids["rv-files"].hidden, true);
+  click(ids, "rv-mode-fixed");
+  assert.equal(ids["rv-confirm"].hidden, true);
+  assert.deepEqual(R.steps().map((s) => s.id), ["back"]);
+  assert.match(ids["rv-need"].textContent, /model-samples_OS1\.13\.syx/);
+  assert.doesNotMatch(ids["rv-need"].textContent, /model-cycles/);
+  click(ids, "rv-mode-unfixed");
+  assert.equal(ids["rv-confirm"].hidden, false);
+  assert.deepEqual(R.steps().map((s) => s.id), ["tocyc", "official"]);
+  assert.match(ids["rv-need"].textContent, /model-cycles_OS1\.13\.syx/);
+  const cards = ids["rv-steps"].byClass("step");
+  assert.equal(cards.length, 2);
+  assert.ok(cards.every((c) => /off/.test(c.className)), "no files yet");
+  assert.match(cards[1].byClass("note")[0].textContent, /Skip this/);
+  R.usb.dev = { state: "ok", product: 0x0f, name: "x" };
+  assert.match(R.devProblem(R.steps()[0]), /nothing to bring back/);
+  assert.equal(R.devProblem(R.steps()[1]), null);
 });

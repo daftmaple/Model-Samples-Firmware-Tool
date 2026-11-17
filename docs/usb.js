@@ -4,14 +4,17 @@
  *
  *   const usb = SamplesUSB.panel({ prefix: "rv", log, render });
  *
- * using the elements <prefix>-connect, -port, -dev and -progress. The tab decides what may be sent where (problem()).
+ * using the elements <prefix>-connect, -port, -dev and -progress. The tab decides what may be sent where (problem()),
+ * and draws each file as usb.card(step, …).
  */
 (function () {
 "use strict";
 
-const F = window.MCFlasher;
-const $ = (id) => document.getElementById(id);
-const el = (tag, text) => { const e = document.createElement(tag); if (text != null) e.textContent = text; return e; };
+const F = window.MCFlasher, UI = window.SamplesUI;
+const { $, el } = UI;
+
+/* Web MIDI with SysEx needs Chrome, Edge or Opera, on https or localhost. */
+const supported = () => !!(window.isSecureContext && navigator.requestMIDIAccess);
 
 function panel({ prefix, log, render }) {
   const id = (k) => $(`${prefix}-${k}`);
@@ -27,7 +30,7 @@ function panel({ prefix, log, render }) {
   function currentOut() { const v = id("port").value; return outputs().find((o) => o.id === v) || null; }
 
   async function connect() {
-    if (!window.isSecureContext || !navigator.requestMIDIAccess) {
+    if (!supported()) {
       log(!navigator.requestMIDIAccess
         ? "This browser has no Web MIDI: use Chrome, Edge or Opera on a computer, or download the file and send it with Elektron Transfer."
         : "Web MIDI needs a secure page: open the hosted version, or serve this folder (python3 -m http.server) instead of opening the file.", "bad");
@@ -47,8 +50,8 @@ function panel({ prefix, log, render }) {
     const sel = id("port"), prev = sel.value;
     sel.textContent = "";
     const outs = outputs();
-    if (!outs.length) sel.append(el("option", "No MIDI output: connect the Model:Samples by USB"));
-    for (const o of outs) { const op = el("option", o.name); op.value = o.id; sel.append(op); }
+    if (!outs.length) sel.append(el("option", null, "No MIDI output: connect the Model:Samples by USB"));
+    for (const o of outs) { const op = el("option", null, o.name); op.value = o.id; sel.append(op); }
     const pick = outs.find((o) => o.id === prev) || outs.find((o) => /model|elektron/i.test(o.name)) || outs[0];
     if (pick) sel.value = pick.id;
   }
@@ -120,16 +123,22 @@ function panel({ prefix, log, render }) {
 
   function renderProgress() {
     const bar = id("progress");
+    const pct = Math.round((u.progress || 0) * 100);
     bar.hidden = !u.sending;
-    bar.querySelector("span").style.width = Math.round((u.progress || 0) * 100) + "%";
+    bar.setAttribute("aria-valuenow", String(pct));
+    bar.querySelector("span").style.width = pct + "%";
   }
 
   /* The connect button, port menu, machine line and progress bar. */
   function renderBar() {
-    id("connect").textContent = u.midi ? "Refresh" : "Connect MIDI";
+    id("connect").textContent = u.midi ? "Refresh" : "Connect";
+    id("connect").disabled = !supported();
     id("port").disabled = !u.midi || !!u.sending;
+    id("port").hidden = !u.midi;
     const d = u.dev;
-    id("dev").textContent = !u.midi ? "Not connected." : !d ? "" : d.state === "ok"
+    id("dev").textContent = !supported()
+      ? "This browser cannot reach the machine over USB (no Web MIDI). Use Chrome, Edge or Opera on a computer, or download the file instead and send it with Elektron Transfer."
+      : !u.midi ? "Not connected." : !d ? "" : d.state === "ok"
       ? `Answers as ${d.device || "Elektron device " + d.id} “${d.name}”, OS ${d.version}.` : d.state === "probing" ? "Asking…" : "No answer.";
     renderProgress();
   }
@@ -139,16 +148,44 @@ function panel({ prefix, log, render }) {
     id("port").onchange = () => probe();
   }
 
-  return Object.assign(u, { connect, fillPorts, probe, deviceProblem, send, renderBar, init });
+  /* One file to send, as a card: title, note, description, file line, then Send over USB / Download .syx / extra
+   * buttons, Cancel while it is sending, and why it cannot be sent to the machine that answers.
+   * step: { id, title, note?, sub }; o: { ready, meta, problem(), send(), download()?, extra: [{ label, title, onclick }],
+   * connectHint? } — without download(), no Download button (the tab offers it elsewhere). */
+  function card(step, o) {
+    const c = el("div", "step" + (o.ready ? "" : " off"));
+    c.append(el("h4", null, step.title));
+    if (step.note) c.append(el("p", "note", step.note));
+    c.append(el("p", "sub", step.sub));
+    c.append(el("p", "meta", o.meta));
+    const row = el("div", "btns");
+    const p = o.ready && u.midi ? o.problem() : null;
+    const go = el("button", "primary", u.sending === step.id ? "Sending…" : "Send over USB");
+    go.disabled = !o.ready || !u.midi || !!p || !!u.sending;
+    go.onclick = o.send;
+    row.append(go);
+    if (o.download) {
+      const dl = el("button", null, "Download .syx");
+      dl.disabled = !o.ready;
+      dl.onclick = o.download;
+      row.append(dl);
+    }
+    for (const x of o.extra || []) {
+      const b = el("button", null, x.label);
+      if (x.title) b.title = x.title;
+      b.disabled = !o.ready;
+      b.onclick = x.onclick;
+      row.append(b);
+    }
+    if (u.sending === step.id) { const cn = el("button", null, "Cancel"); cn.onclick = () => { u.cancel = true; }; row.append(cn); }
+    c.append(row);
+    if (o.ready && !u.midi && supported()) c.append(el("p", "hint", o.connectHint || "To send it over USB, connect in step 1."));
+    if (p) c.append(el("p", "why", p));
+    return c;
+  }
+
+  return Object.assign(u, { connect, fillPorts, probe, deviceProblem, send, renderBar, card, init, supported });
 }
 
-/* Download raw as name. */
-function save(raw, name) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([raw], { type: "application/octet-stream" }));
-  a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
-window.SamplesUSB = { panel, save };
+window.SamplesUSB = { panel, save: UI.save, supported };
 })();
