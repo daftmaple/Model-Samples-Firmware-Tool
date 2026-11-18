@@ -391,3 +391,14 @@ test("app: leaving a tab resets it; staying on it (another hash in the same view
   location.hash = "#help-recovery"; handlers.hashchange();
   assert.deepEqual(calls, ["install", "check"]);
 });
+
+test("install tab: #install-samples / #install-cycles preselect step 1 (links from the Start map)", () => {
+  const location = { hash: "#install-cycles" }, handlers = {};
+  const x = loadTab("install.js", { addEventListener: (t, f) => { handlers[t] = f; } }, { location });
+  const I = x.window.SamplesInstall;
+  assert.equal(I.state.mode, "cycles");
+  location.hash = "#install-samples"; handlers.hashchange();
+  assert.equal(I.state.mode, "samples");
+  location.hash = "#install"; handlers.hashchange();
+  assert.equal(I.state.mode, "samples", "a plain #install keeps the choice");
+});

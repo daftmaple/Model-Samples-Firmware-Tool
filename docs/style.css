@@ -212,3 +212,30 @@ ul.hint { padding-left: 20px; }
 ul.hint li { margin: 3px 0; }
 /* Help links inside a working tab open in a new browser tab, so leaving does not clear its files */
 a[target="_blank"][href^="#"]::after { content: " ↗"; font-size: .85em; }
+
+/* Start: the map of OS states and routes (an inline SVG; numbers link to the tab that does each route) */
+.map-wrap { overflow-x: auto; }
+svg.map { display: block; width: 100%; min-width: 560px; height: auto; max-width: 800px; margin: 10px auto 4px; font-family: inherit; }
+.map-box rect { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+.map-box.home rect { fill: var(--pass-bg); stroke: var(--pass); }
+.map-box.mods rect { fill: var(--info-bg); stroke: var(--accent); }
+.map-box.off rect { fill: var(--warn-bg); stroke: var(--warn); }
+.map-box.menu rect { stroke: var(--muted); stroke-dasharray: 5 4; }
+.map-box text { fill: var(--ink); font-size: 13px; text-anchor: middle; }
+.map-box text.t { font-size: 15px; font-weight: 700; }
+.map-box text.s { fill: var(--muted); font-size: 12px; }
+.map-line { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.map-line.off { stroke: var(--muted); stroke-dasharray: 5 4; }
+.map-head { fill: var(--ink); } .map-head-off { fill: var(--muted); }
+.map-n circle { fill: var(--accent); stroke: var(--panel); stroke-width: 3; }
+.map-n text { fill: #fff; font-size: 13px; font-weight: 700; text-anchor: middle; }
+.map-n.off circle { fill: var(--muted); }
+svg.map a:hover circle, svg.map a:focus-visible circle { fill: var(--ink); }
+svg.map a:focus-visible { outline: none; }
+ol.map-key { padding-left: 24px; font-size: 14px; }
+ol.map-key li { margin: 6px 0; }
+ol.map-key li::marker { font-weight: 700; color: var(--accent); }
+ol.map-key li.off { color: var(--muted); }
+ol.map-key li.off::marker { color: var(--muted); }
+.callout-reset { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.callout-reset strong { color: var(--warn); }

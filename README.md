@@ -9,7 +9,8 @@ A static page for a Model:Samples running a custom (Model:Cycles-based) OS.
 ## Quick start
 
 1. Open the page in Chrome, Edge or Opera on a computer (Web MIDI), and back up your projects with Elektron Transfer.
-2. Pick what you want to do on the **Start** view: *Install a Cycles OS*, *Back to Samples OS*, or *Check a file*.
+2. On the **Start** view, find your machine's current OS on the map and click the numbered route you want: it opens
+   *Install a Cycles OS* or *Back to Samples OS* with step 1 chosen. *Check a file* and recovery are listed below it.
 3. Follow the numbered steps. To install mods: say which OS the machine runs, add your `.syx` files, then connect
    and send over USB, or download the file for a SysEx tool.
 

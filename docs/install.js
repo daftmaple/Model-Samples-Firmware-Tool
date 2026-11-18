@@ -186,6 +186,13 @@ function init() {
   $("in-mode-samples").onclick = () => choose("samples");
   $("in-mode-cycles").onclick = () => choose("cycles");
   UI.dropZone($("in-drop"), $("in-file"), addFiles);
+  // Deep links from the Start map: #install-samples / #install-cycles preselect step 1
+  const fromHash = () => {
+    const m = /^#install-(samples|cycles)$/.exec(location.hash);
+    if (m) choose(m[1]);
+  };
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
   render();
 }
 

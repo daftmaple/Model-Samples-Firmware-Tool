@@ -28,17 +28,56 @@
     <p class="lede">Put a modded Model:Cycles OS (Modded-Cycles or a derivative) on your Elektron Model:Samples, or bring it back to its own OS. Everything happens in this browser tab: nothing is uploaded.</p>
 
     <h2 class="sec-h">What do you want to do?</h2>
+    <div class="panel" id="start-map">
+      <h3>Install mods, or go back to the stock OS</h3>
+      <p>Find the box your machine is in now (<a href="#help-which">not sure?</a>), then follow an arrow to where you want it. Click a number: it opens the tab that does it, with step 1 already chosen.</p>
+      <div class="map-wrap">
+      <svg class="map" viewBox="0 0 800 340" role="img" aria-labelledby="map-title">
+        <title id="map-title">The three OS states of a Model:Samples, the STARTUP MENU, and the routes between them, numbered as in the list below.</title>
+        <defs>
+          <marker id="map-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="map-head" d="M0 0L10 5L0 10z"/></marker>
+          <marker id="map-arr-off" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="map-head-off" d="M0 0L10 5L0 10z"/></marker>
+        </defs>
+        <!-- states -->
+        <g class="map-box off"><rect x="20" y="50" width="180" height="80" rx="10"/>
+          <text x="110" y="80" class="t">Cycles OS</text><text x="110" y="99">without the key fix</text><text x="110" y="117" class="s">answers as Model:Cycles</text></g>
+        <g class="map-box home"><rect x="310" y="50" width="180" height="80" rx="10"/>
+          <text x="400" y="80" class="t">Model:Samples OS</text><text x="400" y="99">its own OS</text><text x="400" y="117" class="s">answers as Model:Samples</text></g>
+        <g class="map-box mods"><rect x="600" y="50" width="180" height="80" rx="10"/>
+          <text x="690" y="80" class="t">Cycles OS</text><text x="690" y="99">with the key fix (mods)</text><text x="690" y="117" class="s">answers as Model:Cycles</text></g>
+        <g class="map-box menu"><rect x="310" y="250" width="180" height="70" rx="10"/>
+          <text x="400" y="278" class="t">STARTUP MENU</text><text x="400" y="298" class="s">recovery, from any state</text></g>
+        <!-- routes -->
+        <path class="map-line" d="M490 72H598" marker-end="url(#map-arr)"/>
+        <path class="map-line" d="M600 108H492" marker-end="url(#map-arr)"/>
+        <path class="map-line" d="M200 72H308" marker-end="url(#map-arr)"/>
+        <path class="map-line off" d="M310 108H202" marker-end="url(#map-arr-off)"/>
+        <path class="map-line" d="M660 50C660 6 720 6 720 48" marker-end="url(#map-arr)"/>
+        <path class="map-line" d="M400 250V132" marker-end="url(#map-arr)"/>
+        <path class="map-line" d="M490 285H690V132" marker-end="url(#map-arr)"/>
+        <!-- numbered links -->
+        <a href="#install-samples"><g class="map-n"><circle cx="545" cy="72" r="12"/><text x="545" y="76.5">1</text></g></a>
+        <a href="#install-cycles"><g class="map-n"><circle cx="690" cy="17" r="12"/><text x="690" y="21.5">2</text></g></a>
+        <a href="#revert-fixed"><g class="map-n"><circle cx="545" cy="108" r="12"/><text x="545" y="112.5">3</text></g></a>
+        <a href="#revert-unfixed"><g class="map-n"><circle cx="255" cy="72" r="12"/><text x="255" y="76.5">4</text></g></a>
+        <g class="map-n off"><circle cx="255" cy="108" r="12"/><text x="255" y="112.5">5</text></g>
+        <a href="#help-recovery"><g class="map-n"><circle cx="400" cy="190" r="12"/><text x="400" y="194.5">6</text></g></a>
+        <a href="#install-samples"><g class="map-n"><circle cx="690" cy="205" r="12"/><text x="690" y="209.5">7</text></g></a>
+      </svg>
+      </div>
+      <ol class="map-key">
+        <li><strong>Install mods.</strong> <a href="#install-samples">Install a Cycles OS</a>, “Its own Model:Samples OS”: sends an <span class="mono">smp-os</span> file over USB.</li>
+        <li><strong>Change mods.</strong> <a href="#install-cycles">Install a Cycles OS</a>, “A Cycles OS with the key fix”: sends a <span class="mono">cyc-os</span> file over USB.</li>
+        <li><strong>Back, the one-step way.</strong> <a href="#revert-fixed">Back to Samples OS</a>, “With Modded-Cycles, a derivative or this page”.</li>
+        <li><strong>Back, the other way.</strong> <a href="#revert-unfixed">Back to Samples OS</a>, “Another way”, then the optional clean-up. Install mods from there with 1.</li>
+        <li class="off"><strong>A cross-flash without the key fix</strong>, for example with elektron-firmware-tool. Not on this page: an OS installed this way cannot take 2 or 3, only 4 or the STARTUP MENU.</li>
+        <li><strong>Recovery.</strong> <a href="#help-recovery">STARTUP MENU</a>: send the official <span class="mono">model-samples_OS1.13.syx</span> over MIDI IN. Works from any state.</li>
+        <li><strong>Mods from the STARTUP MENU.</strong> Download the <span class="mono">smp-os</span> file from <a href="#install-samples">Install a Cycles OS</a>, “Its own Model:Samples OS”, and send it over MIDI IN.</li>
+      </ol>
+    </div>
+
+    <h2 class="sec-h">Or</h2>
     <div class="start-grid">
-      <a class="task" href="#install">
-        <strong>Install mods on my Model:Samples</strong>
-        <span>You have a modded Model:Cycles OS (<span class="mono">.syx</span>) and want it on a Model:Samples, or you want to change the mods you already run.</span>
-        <em>Install a Cycles OS →</em>
-      </a>
-      <a class="task" href="#revert">
-        <strong>Go back to the stock Samples OS</strong>
-        <span>Your Model:Samples runs a Cycles OS and you want Elektron's own Model:Samples OS back.</span>
-        <em>Back to Samples OS →</em>
-      </a>
       <a class="task" href="#check">
         <strong>Check a .syx before flashing it on a Model:Samples</strong>
         <span>Got a file from somewhere else? See whether it is safe for a Model:Samples, where it can be flashed on one, and what the machine accepts afterwards.</span>
@@ -68,6 +107,7 @@
 
     <div class="callout">
       <strong>Before you start:</strong> back up your projects and samples with Elektron Transfer, then close Transfer and Overbridge so this page can use the USB port.
+      <p class="callout-reset"><strong>If it does not start properly after the update:</strong> switch it off and on again. If it still hangs, hold <kbd>FUNC</kbd> while switching it on, then press <kbd>TRIG 2</kbd> (EMPTY RESET). EMPTY RESET clears the active project: that is why the backup comes first.</p>
     </div>
 
     <div class="flow">
@@ -138,6 +178,7 @@
 
     <div class="callout">
       <strong>Before you start:</strong> back up your projects and samples with Elektron Transfer. Set every track that uses an added machine (7 and up) back to one of the six original machines. Close Transfer and Overbridge so this page can use the USB port.
+      <p class="callout-reset"><strong>If it does not start properly after the update:</strong> switch it off and on again. If it still hangs, hold <kbd>FUNC</kbd> while switching it on, then press <kbd>TRIG 2</kbd> (EMPTY RESET). EMPTY RESET clears the active project: that is why the backup comes first.</p>
     </div>
 
     <div class="flow">
@@ -261,6 +302,7 @@
         <li><strong>Connect it on the Install or Back tab.</strong> It answers as a <em>Model:Samples</em> on its own OS, and as a <em>Model:Cycles</em> on any Cycles OS. Elektron Transfer shows the same name.</li>
         <li><strong>With or without the key fix?</strong> The machine cannot say. If you installed it with Modded-Cycles, a derivative or this page, it has the key fix. If you used elektron-firmware-tool or a plain Model:Cycles file, it does not. Still have the file you installed? Drop it on <a href="#check">Check a file</a>: its last check says whether the key fix is there.</li>
         <li><strong>Still unsure?</strong> Try the first way on the Back tab: an OS without the key fix refuses it (“Upgrade Failed”) and nothing changes.</li>
+        <li><strong>Where can it go from there?</strong> See the <a href="#start-map">map on Start</a>.</li>
       </ul>
     </div>
 
